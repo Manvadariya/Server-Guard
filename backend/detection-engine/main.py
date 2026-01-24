@@ -13,8 +13,8 @@ from rules import run_all_rules, AnomalySignal
 from logger import logger
 
 PORT = int(os.environ.get("PORT", 8002))
-ALERT_MANAGER_URL = os.environ.get("ALERT_MANAGER_URL", "http://localhost:8003")
-MODEL_SERVICE_URL = os.environ.get("MODEL_SERVICE_URL", "http://localhost:8006")
+ALERT_MANAGER_URL = os.environ.get("ALERT_MANAGER_URL", "http://127.0.0.1:8003")
+MODEL_SERVICE_URL = os.environ.get("MODEL_SERVICE_URL", "http://127.0.0.1:8006")
 
 class TelemetryEvent(BaseModel):
     event_id: str

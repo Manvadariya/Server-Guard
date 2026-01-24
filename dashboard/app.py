@@ -6,9 +6,13 @@ from datetime import datetime
 app = Flask(__name__)
 
 # Microservice Endpoints
-INGEST_URL = "http://localhost:8001/logs"
-RESPONSE_STATUS_URL = "http://localhost:8004/status"
-RESPONSE_ACTIONS_URL = "http://localhost:8004/actions"
+import os
+
+# Microservice Endpoints (Via API Gateway)
+API_GATEWAY_URL = os.environ.get("API_GATEWAY_URL", "http://localhost:3001")
+INGEST_URL = f"{API_GATEWAY_URL}/proxy/logs"
+RESPONSE_STATUS_URL = f"{API_GATEWAY_URL}/proxy/defense/status"
+RESPONSE_ACTIONS_URL = f"{API_GATEWAY_URL}/proxy/defense/actions"
 
 @app.route('/')
 def index():

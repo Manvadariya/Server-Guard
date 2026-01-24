@@ -7,7 +7,8 @@ from storage import save_telemetry, get_recent_telemetry
 from contextlib import asynccontextmanager
 
 PORT = 8001
-DETECTION_ENGINE_URL = "http://localhost:8002/analyze"
+import os
+DETECTION_ENGINE_URL = os.environ.get("DETECTION_ENGINE_URL", "http://127.0.0.1:8002/analyze")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
