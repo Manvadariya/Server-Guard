@@ -1,0 +1,39 @@
+[
+  {
+    "event_id": "f974dac0-95dc-4e87-8ea0-9966cb739133",
+    "source_ip": "10.0.0.1",
+    "domain": "general",
+    "service": "unknown",
+    "event_type": "login",
+    "payload": {
+      "user": "alice",
+      "status": "failed"
+    },
+    "timestamp": 1710930600,
+    "received_at": "2026-01-24T11:23:07.503128Z"
+  },
+  {
+    "event_id": "130806d5-de60-4f8f-9190-da86d04282df",
+    "source_ip": "192.168.1.5",
+    "domain": "general",
+    "service": "unknown",
+    "event_type": "high_cpu",
+    "payload": {
+      "cpu_val": 99
+    },
+    "timestamp": 1710911101,
+    "received_at": "2026-01-24T11:23:07.503553Z"
+  },
+  {
+    "event_id": "1af45b5c-94b1-4231-8d67-42ce4f787e75",
+    "source_ip": "8.8.8.8",
+    "domain": "general",
+    "service": "unknown",
+    "event_type": "sql_query",
+    "payload": {
+      "query_text": "SELECT * FROM users"
+    },
+    "timestamp": 1710911400,
+    "received_at": "2026-01-24T11:23:07.503779Z"
+  }
+]

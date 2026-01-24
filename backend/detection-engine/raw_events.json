@@ -1,0 +1,21 @@
+[
+    {
+        "ip": "10.0.0.1",
+        "type": "login",
+        "user": "alice",
+        "status": "failed",
+        "time": "2024-03-20T10:30:00Z"
+    },
+    {
+        "src_ip": "192.168.1.5",
+        "alert": "high_cpu",
+        "cpu_val": 99,
+        "timestamp": "2024-03-20 10:35:01"
+    },
+    {
+        "ip_address": "8.8.8.8",
+        "action": "sql_query",
+        "query_text": "SELECT * FROM users",
+        "date": "2024-03-20T10:40:00"
+    }
+]
