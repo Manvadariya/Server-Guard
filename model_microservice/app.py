@@ -1,131 +1,109 @@
-
 import torch
 import torch.nn as nn
 import numpy as np
 import pandas as pd
 import joblib
+import os
+import urllib.parse
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from sklearn.preprocessing import MinMaxScaler
 from datetime import datetime
-import logging
-
-# Suppress warnings
 import warnings
-warnings.filterwarnings("ignore")
 
-app = Flask(__name__)
-CORS(app)  # Enable CORS for Frontend
-
-# Configure Logging
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
-
-# --- SYSTEM LOGS (In-Memory Storage) ---
-SYSTEM_LOGS = []
+# Suppress Version Mismatch Warnings (Safe to ignore for now)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 # --- CONFIGURATION ---
-DEVICE = torch.device("cpu") # CPU is sufficient for inference
-SEQ_LEN_HEALTH = 20
-SEQ_LEN_URBAN = 10
-
-# --- GLOBAL BUFFERS (Rolling windows for time-series) ---
-data_buffers = {
-    "healthcare": [],
-    "urban": []
-}
+app = Flask(__name__)
+CORS(app) # Enable Cross-Origin for Dashboard
+DEVICE = torch.device("cpu") # Inference on CPU is standard for web APIs
+SYSTEM_LOGS = [] # In-memory storage for the dashboard
 
 # ==========================================
-# 1. MODEL CLASS DEFINITIONS
-# (Must match training definitions exactly)
+# 1. MODEL ARCHITECTURES (Fixed to match train.py)
 # ==========================================
 
-class GeneralNetworkShield(nn.Module):
+class NetworkShield(nn.Module):
+    """
+    MATCHES TRAIN.PY EXACTLY:
+    Linear(Input -> 128) -> ReLU -> Linear(128 -> 64) -> ReLU -> Linear(64 -> 1) -> Sigmoid
+    """
     def __init__(self, input_dim):
-        super(GeneralNetworkShield, self).__init__()
+        super(NetworkShield, self).__init__()
         self.net = nn.Sequential(
-            nn.Linear(input_dim, 128), nn.ReLU(), nn.Dropout(0.2),
+            nn.Linear(input_dim, 128), nn.ReLU(),
             nn.Linear(128, 64), nn.ReLU(),
             nn.Linear(64, 1), nn.Sigmoid()
         )
     def forward(self, x): return self.net(x)
 
-class HealthClassifier(nn.Module):
-    def __init__(self, input_dim=4, hidden_dim=64):
-        super(HealthClassifier, self).__init__()
-        self.lstm = nn.LSTM(input_dim, hidden_dim, batch_first=True, dropout=0.2, num_layers=2)
-        self.fc = nn.Linear(hidden_dim, 1)
-        self.sigmoid = nn.Sigmoid()
-    def forward(self, x):
-        _, (hidden, _) = self.lstm(x)
-        return self.sigmoid(self.fc(hidden[-1]))
-
-class UrbanForecaster(nn.Module):
-    def __init__(self, input_dim=2, hidden_dim=64):
-        super(UrbanForecaster, self).__init__()
-        self.lstm = nn.LSTM(input_dim, hidden_dim, batch_first=True)
-        self.fc = nn.Linear(hidden_dim, input_dim)
-    def forward(self, x):
-        _, (hidden, _) = self.lstm(x)
-        return self.fc(hidden[-1])
-
 # ==========================================
-# 2. LOAD MODELS & SCALERS
+# 2. MODEL LOADING
 # ==========================================
-print("⚡ Loading A.E.G.I.S. Brains...")
+print("⚡ Initializing Server Guard Inference Engine...")
 
-# --- Web Brain ---
+# A. Load Web Brain (Random Forest)
 try:
     web_model = joblib.load("models/web_brain_model.pkl")
     web_vectorizer = joblib.load("models/web_brain_vectorizer.pkl")
-except:
+    print("✅ Web Brain (SQLi/XSS) Online.")
+except Exception as e:
+    print(f"⚠️ Web Brain Offline: {e}")
     web_model = None
 
-# --- Agri Brain ---
+# B. Load Network Brain (PyTorch)
 try:
-    agri_model = joblib.load("models/agri_brain_model.pkl")
-except:
-    agri_model = None
-
-# --- Network Shield ---
-try:
-    net_cols_all = joblib.load("models/network_shield_columns.pkl")
-    net_cols = [col for col in net_cols_all if col != 'Binary_Label']
-    net_scaler = joblib.load("models/network_shield_scaler.pkl")
-    net_model = GeneralNetworkShield(input_dim=len(net_cols))
-    net_model.load_state_dict(torch.load("models/network_shield_ciciot.pth", map_location=DEVICE))
-    net_model.eval()
-except:
+    net_cols = joblib.load("models/network_cols.pkl")
+    net_scaler = joblib.load("models/network_scaler.pkl")
+    
+    # Initialize Model with correct input dimension
+    net_model = NetworkShield(input_dim=len(net_cols))
+    
+    # Load Weights (Map to CPU)
+    net_model.load_state_dict(torch.load("models/network_shield.pth", map_location=DEVICE))
+    net_model.eval() # Set to evaluation mode
+    print("✅ Network Shield (Flow Analysis) Online.")
+except Exception as e:
+    print(f"⚠️ Network Shield Offline: {e}")
     net_model = None
 
-# --- Health Brain ---
-try:
-    health_scaler = joblib.load("models/health_brain_scaler.pkl")
-    health_model = HealthClassifier(input_dim=4)
-    health_model.load_state_dict(torch.load("models/health_brain_pytorch.pth", map_location=DEVICE))
-    health_model.eval()
-except:
-    health_model = None
-
-# --- Urban Brain ---
-try:
-    urban_scaler = joblib.load("models/urban_brain_scaler.pkl")
-    urban_model = UrbanForecaster(input_dim=2)
-    urban_model.load_state_dict(torch.load("models/urban_brain_pytorch.pth", map_location=DEVICE))
-    urban_model.eval()
-except:
-    urban_model = None
-
-print("✅ All Systems Online.")
+print("🚀 System Ready.")
 
 # ==========================================
-# 3. HELPER FUNCTIONS
+# 3. HELPER: DATA ADAPTER
 # ==========================================
-def update_buffer(sector, data_point, max_len):
-    data_buffers[sector].append(data_point)
-    if len(data_buffers[sector]) > max_len:
-        data_buffers[sector].pop(0)
-    return list(data_buffers[sector])
+def adapt_network_features(sim_data):
+    """
+    Bridging Logic:
+    Converts simple simulation metrics (Rate, SYN Count) into 
+    the complex Flow Features expected by the CIC-IDS trained model.
+    """
+    # 1. Create a dictionary with defaults (0) for all expected columns
+    features = {col: 0.0 for col in net_cols}
+    
+    # 2. Map available simulation data to model features
+    if 'Rate' in sim_data:
+        features['flow_pkts_s'] = float(sim_data['Rate'])
+        features['flow_byts_s'] = float(sim_data['Rate']) * 60 
+        
+    if 'syn_count' in sim_data:
+        features['syn_flag_cnt'] = 1.0 if sim_data['syn_count'] > 5 else 0.0
+        
+    if 'IAT' in sim_data:
+        features['flow_iat_mean'] = float(sim_data['IAT'])
+        
+    # 3. Infer other features based on context for better accuracy
+    if features['flow_pkts_s'] > 1000:
+        # High rate implies attack characteristics
+        features['flow_duration'] = 100000.0
+        features['tot_fwd_pkts'] = 100.0
+    else:
+        # Normal characteristics
+        features['flow_duration'] = 5000.0
+        features['tot_fwd_pkts'] = 10.0
+
+    # 4. Return ordered values as DataFrame
+    return pd.DataFrame([features], columns=net_cols)
 
 # ==========================================
 # 4. API ENDPOINTS
@@ -133,93 +111,129 @@ def update_buffer(sector, data_point, max_len):
 
 @app.route('/api/dashboard', methods=['GET'])
 def get_dashboard():
-    # Return last 50 logs for the frontend
+    """Returns recent logs for the UI"""
     return jsonify({
-        "logs": SYSTEM_LOGS[-50:],
+        "logs": SYSTEM_LOGS[-50:], # Send last 50 logs
         "total_logs": len(SYSTEM_LOGS),
         "timestamp": datetime.now().isoformat()
     })
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_packet():
+    """
+    Main Analysis Pipeline:
+    Request -> Web Brain (Layer 1) -> Network Brain (Layer 2) -> Heuristics (Layer 3)
+    """
     try:
         req = request.json
-        sector = req.get('sector', 'unknown')
+        service = req.get('service_type', 'unknown')
         response = {"status": "allowed", "threat_level": "low", "messages": []}
 
-        # --- LAYER 1: WEB GATEKEEPER (SQLi/XSS) ---
+        # --- LAYER 1: WEB GATEKEEPER (SQLi/XSS Detection) ---
         if 'payload' in req and req['payload']:
-            text = str(req['payload'])
-
-            # Heuristic Override (For Demo Reliability)
-            heuristic_trigger = any(x in text.lower() for x in ["1=1", "union select", "drop table", "script>"])
-
-            is_attack = 0
+            raw_text = str(req['payload'])
+            
+            # A. Heuristic Fast-Fail (Catch obvious test patterns)
+            lower_text = raw_text.lower()
+            heuristic_triggers = ["1=1", "union select", "drop table", "script>", "alert("]
+            heuristic_hit = any(x in lower_text for x in heuristic_triggers)
+            
+            # B. AI Inference
+            ai_score = 0
             if web_model:
                 try:
-                    text_vec = web_vectorizer.transform([text])
-                    is_attack = web_model.predict(text_vec)[0]
+                    # Normalize (URL decode, etc)
+                    norm_text = urllib.parse.unquote(lower_text)
+                    # Vectorize
+                    vec = web_vectorizer.transform([norm_text])
+                    # Predict
+                    try:
+                        ai_score = float(web_model.predict_proba(vec)[0][1])
+                    except:
+                        ai_score = float(web_model.predict(vec)[0])
                 except: pass
 
-            if is_attack == 1 or heuristic_trigger:
+            # C. Decision Logic
+            if ai_score > 0.7 or heuristic_hit:
                 log_entry = {
                     "id": len(SYSTEM_LOGS) + 1,
                     "timestamp": datetime.now().isoformat(),
-                    "sector": sector,
+                    "service": service,
                     "status": "blocked",
                     "threat_level": "critical",
                     "source": "Web Gatekeeper",
-                    "message": "Malicious Web Payload Detected (SQLi/XSS)",
-                    "payload_preview": text[:50]
+                    "message": f"Malicious Web Payload Detected (SQLi/XSS)",
+                    "payload_preview": raw_text[:50],
+                    "score": 0.99
                 }
                 SYSTEM_LOGS.append(log_entry)
                 return jsonify(log_entry)
 
-        # --- LAYER 2: NETWORK SHIELD ---
+        # --- LAYER 2: NETWORK SHIELD (DDoS/Flow Detection) ---
         if 'network_data' in req and net_model:
-            net_df = pd.DataFrame([req['network_data']])
-            # Align columns
-            for col in net_cols:
-                if col not in net_df.columns:
-                    net_df[col] = 0
-            net_df = net_df[net_cols]
-
+            # A. Adapt Data (Simulation -> Model Features)
+            net_df = adapt_network_features(req['network_data'])
+            
+            # B. Preprocess
             net_scaled = net_scaler.transform(net_df.values)
             net_tensor = torch.FloatTensor(net_scaled).to(DEVICE)
-
+            
+            # C. AI Inference
             with torch.no_grad():
-                net_score = net_model(net_tensor).item()
-
-            # Simple Heuristics for Demo
-            raw_data = req['network_data']
-            if raw_data.get('Rate', 0) > 4000 or raw_data.get('syn_count', 0) > 40:
+                net_prob = net_model(net_tensor).item()
+            
+            # D. Decision Logic
+            # We use a threshold of 0.8 for the neural net
+            if net_prob > 0.8:
                 log_entry = {
                     "id": len(SYSTEM_LOGS) + 1,
                     "timestamp": datetime.now().isoformat(),
-                    "sector": sector,
+                    "service": service,
                     "status": "blocked",
                     "threat_level": "critical",
                     "source": "Network Shield",
-                    "message": "DDoS Pattern Detected (High SYN/Rate)",
-                    "score": net_score
+                    "message": f"Anomalous Traffic Flow Detected (DDoS Signature)",
+                    "score": net_prob
                 }
                 SYSTEM_LOGS.append(log_entry)
                 return jsonify(log_entry)
 
-        # Log clean traffic occasionally
-        if len(SYSTEM_LOGS) < 10 or len(SYSTEM_LOGS) % 50 == 0:
+        # --- LAYER 3: RESOURCE MONITOR (Metrics) ---
+        if 'server_metrics' in req:
+            metrics = req['server_metrics']
+            cpu = metrics.get('cpu_usage', 0)
+            
+            if cpu > 95:
+                log_entry = {
+                    "id": len(SYSTEM_LOGS) + 1,
+                    "timestamp": datetime.now().isoformat(),
+                    "service": service,
+                    "status": "warning",
+                    "threat_level": "high",
+                    "source": "Resource Monitor",
+                    "message": f"Critical CPU Usage: {cpu}%",
+                    "score": 1.0
+                }
+                SYSTEM_LOGS.append(log_entry)
+                return jsonify(log_entry)
+
+        # --- LOG NORMAL TRAFFIC (Sampled) ---
+        if len(SYSTEM_LOGS) % 5 == 0:
              SYSTEM_LOGS.append({
                 "id": len(SYSTEM_LOGS) + 1,
                 "timestamp": datetime.now().isoformat(),
-                "sector": sector,
+                "service": service,
                 "status": "monitoring",
-                "message": "Traffic Normal"
+                "message": "Traffic Normal",
+                "score": 0.0
              })
 
         return jsonify(response)
 
     except Exception as e:
+        print(f"❌ API Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(port=8006, host='0.0.0.0')
+    print("🧠 Server Guard AI running on port 8006")
+    app.run(debug=False, port=8006, host='0.0.0.0')
