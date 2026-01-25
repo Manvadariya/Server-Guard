@@ -1,6 +1,7 @@
 
 import os
 import uuid
+import aiohttp
 from typing import List
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -8,6 +9,7 @@ from contextlib import asynccontextmanager
 from playbooks import run_playbook, get_action_log, blocked_ips, isolated_services
 
 PORT = 8004
+API_GATEWAY_URL = os.environ.get("API_GATEWAY_URL", "http://localhost:3001")
 
 class Alert(BaseModel):
     id: str = str(uuid.uuid4())
@@ -40,6 +42,21 @@ async def list_actions():
 async def execute_response(alert: Alert):
     print(f"⚡ Executing Response for Alert: {alert.rule_id} ({alert.severity})")
     results = run_playbook(alert.model_dump())
+
+    # Notify Gateway of blocks
+    async with aiohttp.ClientSession() as session:
+        for result in results:
+            if result.action_type == "block_ip":
+                try:
+                    await session.post(f"{API_GATEWAY_URL}/ip/block", json={
+                        "ip": result.target,
+                        "reason": "automated_response",
+                        "severity": alert.severity or "high"
+                    })
+                    print(f"   --> Notified Gateway to block {result.target}")
+                except Exception as e:
+                    print(f"   --> Failed to notify Gateway: {e}")
+
     return {
         "alert_id": alert.id,
         "actions_taken": results

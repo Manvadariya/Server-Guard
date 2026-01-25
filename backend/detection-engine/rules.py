@@ -134,39 +134,7 @@ def detect_sql_injection(event: Dict[str, Any]) -> Optional[AnomalySignal]:
     return None
 
 
-def detect_sector_attack(event: Dict[str, Any]) -> Optional[AnomalySignal]:
-    """Detect sector-specific attacks (IoMT, Sensors, Traffic)"""
-    event_type = event.get("event_type", "")
-    payload = event.get("payload", {})
 
-    if event_type in ["iomt_attack", "sensor_attack", "traffic_attack"]:
-        # Determine specific type
-        attack_name = "Sector Attack"
-        if event_type == "iomt_attack": attack_name = "IoMT Device Compromise"
-        elif event_type == "sensor_attack": attack_name = "IoT Sensor Spoofing"
-        elif event_type == "traffic_attack": attack_name = "Smart City Traffic Hack"
-
-        # Check if it was blocked by ML
-        blocked_by = payload.get("blocked_by", "")
-        is_ml = "ML" in blocked_by
-
-        return AnomalySignal(
-            anomaly_id="",
-            rule_id=f"ml_{event_type}" if is_ml else f"rule_{event_type}", # vital for ML tab filter
-            rule_name=f"🧠 ML: {attack_name}" if is_ml else f"⚠️ {attack_name}",
-            severity=Severity.CRITICAL,
-            confidence=0.95 if is_ml else 1.0,
-            description=f"{attack_name} detected targeting {payload.get('domain', 'unknown')} sector.",
-            evidence={
-                "action": payload.get("action", "DETECTED"),
-                "blocked_by": blocked_by,
-                "sensor_data": payload.get("sensor_data"),
-                "threat_type": payload.get("threat_type")
-            },
-            source_event=event,
-            recommendation="Isolate compromised devices immediately"
-        )
-    return None
 
 
 # ============================================
@@ -366,7 +334,7 @@ def detect_brute_force(event: Dict[str, Any]) -> Optional[AnomalySignal]:
 # ============================================
 DETECTION_RULES = [
     ("sql_injection", detect_sql_injection),
-    # ("sector_attack", detect_sector_attack),  # Disabled for Non-IoT adaptation
+
     ("rate_spike", detect_rate_spike),    ("high_cpu", detect_high_cpu),
     ("high_memory", detect_high_memory),
     ("high_network", detect_high_network),

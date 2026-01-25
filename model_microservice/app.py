@@ -40,15 +40,15 @@ class NetworkShield(nn.Module):
 # ==========================================
 # 2. MODEL LOADING
 # ==========================================
-print("⚡ Initializing Server Guard Inference Engine...")
+print("[*] Initializing Server Guard Inference Engine...")
 
 # A. Load Web Brain (Random Forest)
 try:
     web_model = joblib.load("models/web_brain_model.pkl")
     web_vectorizer = joblib.load("models/web_brain_vectorizer.pkl")
-    print("✅ Web Brain (SQLi/XSS) Online.")
+    print("[+] Web Brain (SQLi/XSS) Online.")
 except Exception as e:
-    print(f"⚠️ Web Brain Offline: {e}")
+    print(f"[-] Web Brain Offline: {e}")
     web_model = None
 
 # B. Load Network Brain (PyTorch)
@@ -62,12 +62,12 @@ try:
     # Load Weights (Map to CPU)
     net_model.load_state_dict(torch.load("models/network_shield.pth", map_location=DEVICE))
     net_model.eval() # Set to evaluation mode
-    print("✅ Network Shield (Flow Analysis) Online.")
+    print("[+] Network Shield (Flow Analysis) Online.")
 except Exception as e:
-    print(f"⚠️ Network Shield Offline: {e}")
+    print(f"[-] Network Shield Offline: {e}")
     net_model = None
 
-print("🚀 System Ready.")
+print("[*] System Ready.")
 
 # ==========================================
 # 3. HELPER: DATA ADAPTER
@@ -231,9 +231,9 @@ def analyze_packet():
         return jsonify(response)
 
     except Exception as e:
-        print(f"❌ API Error: {e}")
+        print(f"[!] API Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    print("🧠 Server Guard AI running on port 8006")
+    print("[*] Server Guard AI running on port 8006")
     app.run(debug=False, port=8006, host='0.0.0.0')

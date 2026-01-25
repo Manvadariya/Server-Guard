@@ -52,3 +52,8 @@ The system utilizes a scalable **Agent → AI → Dashboard** pipeline:
 - **Phase 4:** Real-time React Dashboard
 -  **Phase 5:** Automated IP blocking (Firewall integration)
 -  **Phase 6:** Expansion to XSS and DDoS pattern detection
+
+
+WorkFlow 
+
+![alt text](image.png)
