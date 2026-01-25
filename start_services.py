@@ -42,12 +42,6 @@ SERVICES = [
         "folder": "backend/api-gateway",
         "command": ["python", "main.py"],  # Gateway runs on 3001
         "port": 3001
-    },
-    {
-        "name": "Dashboard",
-        "folder": "dashboard",
-        "command": ["python", "app.py"],   # Runs on 8000
-        "port": 8000
     }
 ]
 
