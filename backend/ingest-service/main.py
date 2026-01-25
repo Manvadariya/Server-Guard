@@ -27,12 +27,12 @@ sio = socketio.AsyncServer(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("🚀 Server Guard Ingest Service starting...")
+    print("Server Guard Ingest Service starting...")
     init_storage()
-    print(f"📦 Storage initialized. Events in DB: {get_event_count()}")
-    print(f"🔗 Forwarding to Detection Engine at: {DETECTION_ENGINE_URL}")
+    print(f"Storage initialized. Events in DB: {get_event_count()}")
+    print(f"Forwarding to Detection Engine at: {DETECTION_ENGINE_URL}")
     yield
-    print("🛑 Ingest Service shutting down...")
+    print("Ingest Service shutting down...")
 
 app = FastAPI(
     title="Server Guard - Ingest Service",
@@ -89,10 +89,10 @@ async def forward_to_detection(event_dict: dict):
                     analysis = await resp.json()
                     anomalies = analysis.get("anomalies_detected", 0)
                     if anomalies > 0:
-                        print(f"⚠️ Detection Engine found {anomalies} anomalies")
+                        print(f"[WARN] Detection Engine found {anomalies} anomalies")
     except Exception as e:
         # We just log connection errors, we don't crash the ingest
-        print(f"⚠️ Could not reach Detection Engine: {e}")
+        print(f"[WARN] Could not reach Detection Engine: {e}")
 
 # ==========================================
 # 3. CORE INGESTION API
@@ -121,7 +121,7 @@ async def ingest_event(event_input: TelemetryEventInput, background_tasks: Backg
         # 3. Store Locally (Fast)
         stored = save_telemetry(event_dict)
         if not stored:
-            print("❌ Failed to write to local storage")
+            print("[ERROR] Failed to write to local storage")
 
         # 4. Emit to Dashboard (Real-time)
         await sio.emit('telemetry', event_dict)
@@ -130,7 +130,7 @@ async def ingest_event(event_input: TelemetryEventInput, background_tasks: Backg
         # We use BackgroundTasks so the API returns immediately to the client
         background_tasks.add_task(forward_to_detection, event_dict)
 
-        print(f"📥 Ingested: {event_input.event_type} from {event_input.service}")
+        print(f"[INFO] Ingested: {event_input.event_type} from {event_input.service}")
 
         return IngestResponse(
             success=True,
@@ -139,7 +139,7 @@ async def ingest_event(event_input: TelemetryEventInput, background_tasks: Backg
         )
 
     except Exception as e:
-        print(f"❌ Ingest error: {e}")
+        print(f"[ERROR] Ingest error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/events", tags=["Events"])
@@ -163,5 +163,5 @@ async def delete_events():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8001))
-    print(f"🚀 Server Guard Ingest Service running on port {port}")
+    print(f"Server Guard Ingest Service running on port {port}")
     uvicorn.run(socket_app, host="0.0.0.0", port=port, reload=False)

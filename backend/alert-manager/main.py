@@ -46,27 +46,27 @@ class HealthResponse(BaseModel):
 
 ALERT_TEMPLATES = {
     "sql_injection": {
-        "title": "🚨 SQL Injection Attempt",
+        "title": "SQL Injection Attempt",
         "severity": "critical",
     },
     "rate_spike": {
-        "title": "⚡ Potential DDoS Attack",
+        "title": "Potential DDoS Attack",
         "severity": "warning",
     },
     "high_cpu": {
-        "title": "🔥 High CPU Usage Alert",
+        "title": "High CPU Usage Alert",
         "severity": "warning",
     },
     "high_memory": {
-        "title": "💾 Critical Memory Usage",
+        "title": "Critical Memory Usage",
         "severity": "critical",
     },
     "high_network": {
-        "title": "📡 High Network Traffic (Data Exfiltration Risk)",
+        "title": "High Network Traffic (Data Exfiltration Risk)",
         "severity": "warning",
     },
     "brute_force": {
-        "title": "🔐 Brute Force Attack Detected",
+        "title": "Brute Force Attack Detected",
         "severity": "critical",
     },
 }
@@ -88,7 +88,7 @@ def generate_alert(anomaly: AnomalySignal) -> Alert:
         severity = anomaly.severity
 
     template = {
-        "title": template_config.get("title", f"⚠️ {anomaly.rule_name}"),
+        "title": template_config.get("title", f"{anomaly.rule_name}"),
         "severity": severity,
     }
 

@@ -461,7 +461,7 @@ class IPManager:
             self._log_action("block", ip, reason.value, severity.value,
                            duration, triggered_by, details)
 
-        print(f"[IP Manager] 🚫 BLOCKED {ip} for {duration}s | Reason: {reason.value} | Severity: {severity.value}")
+        print(f"[IP Manager] [BLOCKED] BLOCKED {ip} for {duration}s | Reason: {reason.value} | Severity: {severity.value}")
 
         return {
             "success": True,
@@ -499,7 +499,7 @@ class IPManager:
             self._log_action("unblock", ip, record.reason.value, record.severity.value,
                            None, triggered_by, {"was_blocked_for": duration_was})
 
-        print(f"[IP Manager] ✅ UNBLOCKED {ip} | Was blocked for {duration_was}s")
+        print(f"[IP Manager] [UNBLOCKED] UNBLOCKED {ip} | Was blocked for {duration_was}s")
 
         return {
             "success": True,
@@ -612,7 +612,7 @@ class IPManager:
             self._log_action("throttle", ip, "rate_limit", "medium",
                            duration, "system", {"new_limit": new_limit})
 
-        print(f"[IP Manager] ⚡ THROTTLED {ip} to {new_limit} req/min")
+        print(f"[IP Manager] [THROTTLED] THROTTLED {ip} to {new_limit} req/min")
 
         return {
             "success": True,
@@ -830,7 +830,7 @@ class IPManager:
             except Exception as e:
                 print(f"[IP Manager] Callback error: {e}")
 
-        print(f"[IP Manager] 📦 DROPPED: {attack_type} from {source_ip} on {endpoint} ({reason})")
+        print(f"[IP Manager] [DROPPED] DROPPED: {attack_type} from {source_ip} on {endpoint} ({reason})")
 
     def record_blocked_request(
         self,
@@ -1045,7 +1045,7 @@ class IPManager:
 
             self._log_action("clear_all", "ALL", "manual", "info", None, "admin", {})
 
-        print(f"[IP Manager] 🗑️ Cleared {count} blocked IPs")
+        print(f"[IP Manager] [CLEARED] Cleared {count} blocked IPs")
 
         return {
             "success": True,

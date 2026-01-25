@@ -55,7 +55,7 @@ def save_telemetry(event: dict) -> bool:
             return True
 
     except Exception as e:
-        print(f"❌ Storage error: {e}")
+        print(f"[ERROR] Storage error: {e}")
         return False
 
 def get_recent_telemetry(limit: int = 50) -> List[dict]:
@@ -98,7 +98,7 @@ def clear_storage() -> bool:
                 json.dump([], f)
             return True
     except Exception as e:
-        print(f"❌ Clear error: {e}")
+        print(f"[ERROR] Clear error: {e}")
         return False
 
 # Auto-initialize on import

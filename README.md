@@ -1,59 +1,149 @@
 # 🛡️ Server Guard
 ### ML-Driven Cyber-Resilient Server Security Platform
 
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
+![React](https://img.shields.io/badge/frontend-React-61DAFB.svg)
+![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)
 
 ## 📖 Overview
+
 **Server Guard** is an automated **SOAR** (Security Orchestration, Automation, and Response) platform designed to shift server security from passive monitoring to active defense. 
 
-Unlike traditional tools that alert you *after* a breach, Server Guard monitors system telemetry in real-time, leveraging **Machine Learning** to intercept SQL Injection attacks before they execute, visualized through a high-performance SOC-style dashboard.
+Unlike traditional tools that simply alert you *after* a breach, Server Guard monitors system telemetry in real-time, leverages **Machine Learning** to intercept attacks (like SQL Injection, DDoS, and Brute Force) before they execute, and visualizes everything through a high-performance SOC-style dashboard.
 
 ---
 
 ## 🚀 Key Features
-*   **⚡ Active Defense:** Real-time threat detection and mitigation.
-*   **📊 Live Telemetry:** Continuous monitoring of CPU, RAM, and Disk via a custom Python agent.
-*   **🧠 AI-Powered Detection:** 
-    *   **Random Forest Classifier** trained on malicious HTTP payloads.
-    *   **TF-IDF Vectorization** for instant SQL Injection (SQLi) identification.
-*   **🚨 Smart Alerting:** Automated detection of resource exhaustion (e.g., CPU > 90%).
-*   **🖥️ Unified Dashboard:** A sleek React-based Dark Mode UI combining performance metrics with security logs.
+
+*   **⚡ Active Defense:** Real-time threat detection and mitigation pipeline.
+*   **🧠 AI-Powered Detection:**
+    *   **Web Gatekeeper:** Random Forest Classifier & TF-IDF Vectorization to block SQL Injection (SQLi) and XSS payload attacks.
+    *   **Network Shield:** PyTorch-based Deep Learning model to detect DDoS patterns and anomalous traffic flows.
+*   **📡 Real-Time Telemetry:** Continuous ingestion of system metrics (CPU, RAM, Network) and logs via WebSockets.
+*   **🚨 Automated Response:** 
+    *   Instant IP Blocking via central IP Manager.
+    *   Service Isolation and rate limiting.
+    *   Syncs defensive actions across the fleet (Multi-Laptop support).
+*   **🖥️ Unified SOC Dashboard:** sleek React-based UI for visualizing attacks, system health, and blocked threats live.
+*   **🧱 Microservices Architecture:** Scalable, modular design separating ingestion, detection, and response.
+*   **🛡️ Multi-Vector Protection:** Robust defense against SQL Injection (SQLi), Cross-Site Scripting (XSS), DDoS, Port Scanning, and Resource Exhaustion.
 
 ---
+
+
 
 ## 🏗️ Architecture
-The system utilizes a scalable **Agent → AI → Dashboard** pipeline:
+The system utilizes a scalable **Agent → Ingest → AI → Response** pipeline:
 
-1.  **Watchdog Agent (Python):** Deployed on target servers; collects `psutil` metrics every 2 seconds.
-2.  **Backend Core (FastAPI):**
-    *   **Ingestion Engine:** High-speed telemetry processing.
-    *   **Inference Engine:** Runs payloads through the ML model.
-    *   **Rule Engine:** Evaluates system health thresholds.
-3.  **Dashboard (React):** Real-time visualization and critical alert broadcasting.
+**Client** → **Gateway** → **Ingest** → **Detection (AI)** → **Alert** → **Response** → **Gateway (Mitigation)**
+
+### System Workflow
+Below illustrates the high-level workflow of the system from attack initiation to automated defense.
+
+![alt text](image.png)
 
 ---
 
-## 🛠️ Tech Stack
+## 📊 Datasets Used
+
+We leverage high-quality cybersecurity datasets to train our AI models for accurate threat detection:
+
+| Dataset | Use Case | Description |
+| :--- | :--- | :--- |
+| **[sajid576/sql-injection-dataset](https://www.kaggle.com/datasets/sajid576/sql-injection-dataset)** | **SQL Injection Detection** | Used to train the Web Gatekeeper model to identify malicious SQL query patterns. |
+| **[syedsaqlainhussain/cross-site-scripting-xss-dataset](https://www.kaggle.com/datasets/syedsaqlainhussain/cross-site-scripting-xss-dataset)** | **XSS Detection** | Provides diverse XSS payloads for detecting malicious script injections. |
+| **[Friday-WorkingHours-Afternoon-DDos](https://www.kaggle.com/datasets/cicdataset/cicids2017)** | **DDoS Detection** | A subset of the CIC-IDS2017 dataset used to train the Network Shield for traffic anomaly and flood detection. |
+
+---
+
+## 🧩 Microservices Breakdown
+
+| Service | Port | Description | Tech Stack |
+| :--- | :--- | :--- | :--- |
+| **Dashboard** | `8000` | User Interface for monitoring and control. | Flask, React (Static) |
+| **API Gateway** | `3001` | Central entry point, Socket.IO bridge, and IP Manager. | FastAPI, Socket.IO |
+| **Ingest Service** | `8001` | High-throughput telemetry ingestion & local storage. | FastAPI, AsyncIO |
+| **Detection Engine** | `8002` | Analyzes events using Rules + ML Models. | FastAPI, PyTorch |
+| **Alert Manager** | `8003` | Aggregates anomalies and generates structured alerts. | FastAPI |
+| **Response Engine** | `8004` | Executes playbooks (Block IP, Throttle) and syncs state. | FastAPI |
+| **Model Service** | `8006` | Dedicated inference server for AI models. | Flask, Scikit-learn, Torch |
+
+---
+
+## 🛠️ Installation & Setup
+
+### Prerequisites
+*   **Python 3.9+**
+*   **Node.js** (Optional, for frontend dev)
+*   Windows/Linux/MacOS
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/yourusername/Server-Guard.git
+cd Server-Guard
+```
+
+### 2. Install Dependencies
+Each microservice is Python-based. You can install all dependencies:
+
+```bash
+# Example for one service (repeat or use a master script)
+pip install -r backend/api-gateway/requirements.txt
+pip install -r backend/detection-engine/requirements.txt
+# ... etc
+```
+
+### 3. Start the Platform
+We provide a unified orchestration script to start all services in the correct order.
+
+```bash
+# From the root directory
+python start_services.py
+```
+
+This will launch:
+1.  Ingest Service
+2.  Detection Engine
+3.  Alert Manager
+4.  Response Engine
+5.  Model Service
+6.  API Gateway
+7.  Dashboard
+
+### 4. Access the Dashboard
+Open your browser and navigate to:
+**http://localhost:8000**
+
+---
+
+## 🔌 API Documentation
+
+### API Gateway (`http://localhost:3001`)
+*   `GET /health`: System status and connected clients.
+*   `POST /ip/block`: Manually block an IP address.
+*   `GET /proxy/logs`: Fetch recent telemetry logs.
+
+### Ingest Service (`http://localhost:8001`)
+*   `POST /ingest`: Send raw telemetry data.
+*   `GET /events`: List stored events.
+
+### Response Engine (`http://localhost:8004`)
+*   `POST /execute`: Run response playbooks for a specific alert.
+*   `GET /actions`: View history of automated actions taken.
+
+---
+
+## 💻 Tech Stack
 
 | Category | Tools |
 | :--- | :--- |
-| **Backend** | Python, FastAPI, Uvicorn |
-| **Frontend** | React.js, Chart.js, Axios |
-| **Machine Learning** | Scikit-learn, Pandas, NumPy |
-| **Monitoring** | Psutil |
+| **Backend Framework** | Python, FastAPI, Uvicorn, Flask |
+| **Real-time Comms** | Socket.IO, AsyncIO |
+| **Machine Learning** | PyTorch (Neural Nets), Scikit-learn (Random Forest), Pandas, NumPy |
+| **Frontend** | React, Chart.js, HTML5/CSS3 |
+| **System Info** | Psutil |
 
 ---
 
 
-## 🔮 Roadmap
-- **Phase 0:** Basic Model Training
-- **Phase 1:** Watchdog Agent & Telemetry Ingestion
-- **Phase 2:** Rule-based Resource Detection
-- **Phase 3:** AI Model Integration (SQLi Detection)
-- **Phase 4:** Real-time React Dashboard
--  **Phase 5:** Automated IP blocking (Firewall integration)
--  **Phase 6:** Expansion to XSS and DDoS pattern detection
-
-
-WorkFlow 
-
-![alt text](image.png)

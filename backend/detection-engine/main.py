@@ -182,7 +182,7 @@ async def call_ml_service(event_dict: dict) -> List[AnomalyOutput]:
                         ml_anomalies.append(AnomalyOutput(
                             anomaly_id=str(uuid.uuid4()),
                             rule_id="ml_" + result.get("source", "network_shield").lower().replace(" ", "_"),
-                            rule_name=f"🧠 ML: {result.get('source', 'AI Detection')}",
+                            rule_name=f"ML: {result.get('source', 'AI Detection')}",
                             severity=result.get("threat_level", "high"),
                             confidence=result.get("score", 0.85),
                             description=result.get("message", "AI model detected anomalous behavior"),
@@ -193,7 +193,7 @@ async def call_ml_service(event_dict: dict) -> List[AnomalyOutput]:
                         ))
     except Exception as e:
         # ML service unavailable - fail silently, rules still work
-        logger.warning(f"⚠️ [ML INFO] Call to Model Service failed: {e}")
+        logger.warning(f"[ML INFO] Call to Model Service failed: {e}")
         pass
 
     return ml_anomalies

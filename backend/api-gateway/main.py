@@ -617,7 +617,7 @@ async def proxy_logs(limit: int = 50):
     """Proxy to Ingest Service logs"""
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f"{INGEST_SERVICE_URL}/logs?limit={limit}") as resp:
+            async with session.get(f"{INGEST_SERVICE_URL}/events?limit={limit}") as resp:
                 if resp.status == 200:
                     return await resp.json()
                 raise HTTPException(status_code=resp.status, detail="Ingest Service Error")

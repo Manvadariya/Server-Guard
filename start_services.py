@@ -20,10 +20,6 @@ SERVICES = [
         "port": 8002
     },
     {
-        # Does not exist as a separate folder? Let's check.
-        # Based on file listing, Alert Manager seems to be missing main.py or folder?
-        # Listing showed 'alert-manager' directory in 'backend' with 3 children.
-        # I'll enable it if I find it, for now assume it follows similar pattern.
         "name": "Alert Manager",
         "folder": "backend/alert-manager",
         "command": ["python", "main.py"],
@@ -74,13 +70,13 @@ def start_services():
         print(f"👉 Starting {service['name']} on port {service['port']}...")
         
         try:
-            # Start process in new window/background
-            # Using Shell=True to run in shell, but better to keep track of PID
-            # For Windows, creationflags=subprocess.CREATE_NEW_CONSOLE helps to see logs in new windows if desired
-            # But for automation, we want them in background.
+            # Construct command to open titled window
+            # cmd /k keeps window open. "title ..." sets the window title.
+            cmd_str = " ".join(service['command'])
+            full_command = f'title ServerGuard - {service["name"]} && {cmd_str}'
             
             p = subprocess.Popen(
-                service['command'], 
+                ["cmd", "/k", full_command], 
                 cwd=service_path,
                 creationflags=subprocess.CREATE_NEW_CONSOLE
             )
@@ -89,11 +85,8 @@ def start_services():
             
             if p.poll() is not None:
                 print(f"❌ {service['name']} failed to start immediately.")
-                out, err = p.communicate()
-                print("STDOUT:", out.decode())
-                print("STDERR:", err.decode())
             else:
-                print(f"✅ {service['name']} started (PID: {p.pid})")
+                print(f"✅ {service['name']} started (PID: {p.pid}) in new window")
 
         except Exception as e:
             print(f"❌ Failed to start {service['name']}: {e}")
@@ -107,19 +100,17 @@ def start_services():
         while True:
             time.sleep(1)
             # Check if any process died
-            for name, p in processes:
+            for item in processes[:]:
+                name, p = item
                 if p.poll() is not None:
-                    print(f"⚠️  {name} stopped unexpectedly!")
-                    out, err = p.communicate()
-                    if out: print(out.decode())
-                    if err: print(err.decode())
-                    processes.remove((name, p))
+                    print(f"⚠️  {name} window closed!")
+                    processes.remove(item)
     except KeyboardInterrupt:
         print("\n🛑 Stopping all services...")
         for name, p in processes:
             print(f"   Killing {name}...")
-            p.terminate() 
-            # p.kill() if needed
+            # We need to kill the process tree because Popen is holding cmd.exe
+            subprocess.run(f"taskkill /F /T /PID {p.pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print("Done.")
 
 def kill_process_on_port(port):
@@ -128,7 +119,6 @@ def kill_process_on_port(port):
     """
     try:
         # Find PID using netstat
-        # netstat -ano | findstr :<port>
         result = subprocess.run(f'netstat -ano | findstr :{port}', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = result.stdout.decode().strip()
         
@@ -138,8 +128,6 @@ def kill_process_on_port(port):
         lines = output.split('\n')
         for line in lines:
             parts = line.split()
-            # typical line: TCP    0.0.0.0:8001           0.0.0.0:0              LISTENING       25204
-            # We want the last element which is the PID
             if len(parts) > 4 and str(port) in parts[1]:
                 pid = parts[-1]
                 try:

@@ -71,10 +71,10 @@ def _system_block_ip(ip: str) -> bool:
             cmd = ["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
-                print(f"[SYSTEM BLOCK] ✅ Blocked {ip} via iptables")
+                print(f"[SYSTEM BLOCK] [OK] Blocked {ip} via iptables")
                 return True
             else:
-                print(f"[SYSTEM BLOCK] ❌ iptables failed: {result.stderr}")
+                print(f"[SYSTEM BLOCK] [ERROR] iptables failed: {result.stderr}")
 
         elif system == "Darwin":  # macOS
             # Use pfctl to block IP
@@ -85,15 +85,15 @@ def _system_block_ip(ip: str) -> bool:
             if result.returncode == 0:
                 # Enable the anchor
                 subprocess.run(["sudo", "pfctl", "-e"], capture_output=True)
-                print(f"[SYSTEM BLOCK] ✅ Blocked {ip} via pfctl")
+                print(f"[SYSTEM BLOCK] [OK] Blocked {ip} via pfctl")
                 return True
             else:
-                print(f"[SYSTEM BLOCK] ❌ pfctl failed: {result.stderr}")
+                print(f"[SYSTEM BLOCK] [ERROR] pfctl failed: {result.stderr}")
 
     except subprocess.TimeoutExpired:
-        print(f"[SYSTEM BLOCK] ⏱️ Timeout blocking {ip}")
+        print(f"[SYSTEM BLOCK] [TIMEOUT] Timeout blocking {ip}")
     except Exception as e:
-        print(f"[SYSTEM BLOCK] ❌ Error blocking {ip}: {e}")
+        print(f"[SYSTEM BLOCK] [ERROR] Error blocking {ip}: {e}")
 
     return False
 
@@ -111,18 +111,18 @@ def _system_unblock_ip(ip: str) -> bool:
             cmd = ["sudo", "iptables", "-D", "INPUT", "-s", ip, "-j", "DROP"]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
-                print(f"[SYSTEM BLOCK] ✅ Unblocked {ip} via iptables")
+                print(f"[SYSTEM BLOCK] [OK] Unblocked {ip} via iptables")
                 return True
 
         elif system == "Darwin":
             # Remove rule from pfctl
             cmd = f'sudo pfctl -a "threatops" -F rules'
             subprocess.run(cmd, shell=True, capture_output=True, timeout=5)
-            print(f"[SYSTEM BLOCK] ✅ Cleared pfctl rules (unblocked {ip})")
+            print(f"[SYSTEM BLOCK] [OK] Cleared pfctl rules (unblocked {ip})")
             return True
 
     except Exception as e:
-        print(f"[SYSTEM BLOCK] ❌ Error unblocking {ip}: {e}")
+        print(f"[SYSTEM BLOCK] [ERROR] Error unblocking {ip}: {e}")
 
     return False
 
@@ -258,7 +258,7 @@ def execute_block_ip(alert: Dict[str, Any]) -> ActionResult:
             action_type=ActionType.BLOCK_IP,
             status=ActionStatus.SKIPPED,
             target=ip,
-            message=f"⚠️ Refusing to block protected IP: {ip}",
+            message=f"[WARN] Refusing to block protected IP: {ip}",
             executed_at=datetime.utcnow().isoformat() + "Z"
         )
 
@@ -281,7 +281,7 @@ def execute_block_ip(alert: Dict[str, Any]) -> ActionResult:
         action_type=ActionType.BLOCK_IP,
         status=ActionStatus.SUCCESS,
         target=ip,
-        message=f"✅ IP {ip} blocked {'(system-level)' if system_blocked else '(application-level)'}",
+        message=f"[OK] IP {ip} blocked {'(system-level)' if system_blocked else '(application-level)'}",
         executed_at=datetime.utcnow().isoformat() + "Z",
         details={
             "blocked_ips_count": len(blocked_ips),
@@ -315,7 +315,7 @@ def execute_isolate_service(alert: Dict[str, Any]) -> ActionResult:
         action_type=ActionType.ISOLATE_SERVICE,
         status=ActionStatus.SUCCESS,
         target=service,
-        message=f"🔒 Service {service} isolated from network",
+        message=f"[LOCKED] Service {service} isolated from network",
         executed_at=datetime.utcnow().isoformat() + "Z",
         details={
             "isolated_services": list(isolated_services),
@@ -346,7 +346,7 @@ def execute_throttle(alert: Dict[str, Any]) -> ActionResult:
             action_type=ActionType.THROTTLE,
             status=ActionStatus.SKIPPED,
             target=ip,
-            message=f"⚠️ Refusing to throttle protected IP: {ip}",
+            message=f"[WARN] Refusing to throttle protected IP: {ip}",
             executed_at=datetime.utcnow().isoformat() + "Z"
         )
 
@@ -359,7 +359,7 @@ def execute_throttle(alert: Dict[str, Any]) -> ActionResult:
         action_type=ActionType.THROTTLE,
         status=ActionStatus.SUCCESS,
         target=ip,
-        message=f"⏱️ Rate limit applied to {ip}: {limit} req/min",
+        message=f"[APPLIED] Rate limit applied to {ip}: {limit} req/min",
         executed_at=datetime.utcnow().isoformat() + "Z",
         details={
             "rate_limit": limit,
@@ -375,7 +375,7 @@ def execute_alert_only(alert: Dict[str, Any]) -> ActionResult:
         action_type=ActionType.ALERT_ONLY,
         status=ActionStatus.SUCCESS,
         target="operators",
-        message="📢 Alert sent to operators (no automated action)",
+        message="[INFO] Alert sent to operators (no automated action)",
         executed_at=datetime.utcnow().isoformat() + "Z",
         details={
             "action": "notification_only",
