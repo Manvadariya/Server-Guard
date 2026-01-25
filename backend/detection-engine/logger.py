@@ -1,5 +1,5 @@
 """
-Threat_Ops.ai - Structured Logging Module
+ServerGuard - Structured Logging Module
 Provides industry-standard JSON logging configuration.
 """
 

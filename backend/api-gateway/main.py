@@ -69,7 +69,7 @@ async def connect(sid, environ):
     connected_clients.add(sid)
     print(f"Frontend connected: {sid} (total: {len(connected_clients)})")
     await sio.emit('connected', {
-        'message': 'Connected to Threat_Ops.ai Gateway',
+        'message': 'Connected to ServerGuard Gateway',
         'timestamp': datetime.utcnow().isoformat() + 'Z'
     }, to=sid)
 
@@ -116,7 +116,7 @@ async def lifespan(app: FastAPI):
     print("API Gateway shutting down...")
 
 app = FastAPI(
-    title="Threat_Ops.ai - API Gateway",
+    title="ServerGuard - API Gateway",
     description="Socket.IO bridge",
     version="1.0.0",
     lifespan=lifespan

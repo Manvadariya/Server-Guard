@@ -1,4 +1,4 @@
-# Threat_Ops.ai - API Gateway
+# ServerGuard - API Gateway
 
 Socket.IO bridge between backend services and frontend.
 
@@ -13,7 +13,7 @@ Socket.IO bridge between backend services and frontend.
 ### 1. Create Virtual Environment
 
 ```bash
-cd /Users/aryan/Developer/Threat_Ops.ai/backend/api-gateway
+cd /Users/aryan/Developer/ServerGuard/backend/api-gateway
 python3 -m venv venv
 source venv/bin/activate
 ```

@@ -1,5 +1,5 @@
 """
-Threat_Ops.ai - Detection Engine Rules
+ServerGuard - Detection Engine Rules
 Rule-based anomaly detection patterns
 """
 

@@ -1,5 +1,5 @@
 """
-Threat_Ops.ai - IP Blocking Middleware
+ServerGuard - IP Blocking Middleware
 FastAPI middleware for request-level IP blocking and rate limiting
 Enhanced with brute force and flooding detection
 """

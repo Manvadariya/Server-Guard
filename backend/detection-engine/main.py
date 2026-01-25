@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI):
     logger.info("Detection Engine shutting down...")
 
 app = FastAPI(
-    title="Threat_Ops.ai - Detection Engine",
+    title="ServerGuard - Detection Engine",
     description="Rule-based + ML anomaly detection service",
     version="1.0.0",
     lifespan=lifespan

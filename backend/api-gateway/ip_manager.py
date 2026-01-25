@@ -1,5 +1,5 @@
 """
-Threat_Ops.ai - IP Manager Module
+ServerGuard - IP Manager Module
 Centralized IP blocking, rate limiting, and threat tracking
 """
 

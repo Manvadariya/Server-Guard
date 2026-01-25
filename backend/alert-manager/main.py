@@ -164,7 +164,7 @@ async def lifespan(app: FastAPI):
     print("Alert Manager shutting down...")
 
 app = FastAPI(
-    title="Threat_Ops.ai - Alert Manager",
+    title="ServerGuard - Alert Manager",
     description="Alert generation service",
     version="1.0.0",
     lifespan=lifespan
