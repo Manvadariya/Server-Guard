@@ -5,8 +5,8 @@ echo ========================================================
 echo.
 
 echo [1/4] Installing Backend Dependencies...
-pip install -r backend/requirements.txt
-pip install -r model_microservice/requirements.txt
+python -m pip install -r backend/requirements.txt
+python -m pip install -r model_microservice/requirements.txt
 
 echo [2/4] Installing Frontend Dependencies...
 cd frontend

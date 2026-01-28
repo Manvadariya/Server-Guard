@@ -21,7 +21,7 @@ const INITIAL_LOGS = [
     { ts: '00:00:01', type: 'info', msg: 'Server console initialized. Kernel v5.15.0-generic loaded.' },
     { ts: '00:00:02', type: 'success', msg: 'Uplink established. Latency: 12ms.' },
     { ts: '00:00:02', type: 'info', msg: 'Loading infrastructure modules...' },
-    { ts: '00:00:03', type: 'success', msg: 'Modules ready: [SQLi, BruteForce, DDoS, PortScan]' },
+    { ts: '00:00:03', type: 'success', msg: 'Models: web_gatekeeper + network_shield online.' },
     { ts: '00:00:04', type: 'warning', msg: 'Root privileges granted. Monitoring active.' },
     { ts: '00:00:05', type: 'info', msg: 'Awaiting target designation...' },
 ];
@@ -32,6 +32,58 @@ const SERVER_ATTACKS = [
     { id: 'flood', name: 'Network Flood', icon: Activity, color: 'text-purple-400', desc: 'High-volume UDP/TCP packet saturation attack.' },
     { id: 'scan', name: 'Port Scan', icon: Search, color: 'text-[#ccf655]', desc: 'Reconnaissance for open server ports (21, 22, 80, 443).' },
 ];
+
+// Attack payload helpers (mirrors simulation_driver.py)
+const SQL_PAYLOADS = [
+    "' OR 1=1 --",
+    "UNION SELECT username, password FROM users",
+    "admin' --",
+    "1; DROP TABLE production_logs",
+    "' OR '1'='1",
+    "SELECT * FROM data WHERE id=1 OR 1=1"
+];
+
+const generate_network_stats = (mode) => {
+    if (mode === "ddos") {
+        return {
+            Rate: 8000 + Math.random() * 42000,
+            syn_count: 100 + Math.floor(Math.random() * 200),
+            IAT: 0.001 + Math.random() * 0.05,
+            "Tot size": 64 + Math.random() * 64
+        };
+    } else if (mode === "heavy_load") {
+        return {
+            Rate: 2000 + Math.random() * 2500,
+            syn_count: 5 + Math.floor(Math.random() * 15),
+            IAT: 0.1 + Math.random() * 0.4,
+            "Tot size": 500 + Math.random() * 1000
+        };
+    } else if (mode === "scan") {
+        return {
+            Rate: 500 + Math.random() * 1000,
+            syn_count: 200 + Math.floor(Math.random() * 300),
+            IAT: 0.01 + Math.random() * 0.05,
+            "Tot size": 40 + Math.random() * 24
+        };
+    } else {
+        return {
+            Rate: 10 + Math.random() * 790,
+            syn_count: Math.floor(Math.random() * 4),
+            IAT: 1.0 + Math.random() * 4.0,
+            "Tot size": 200 + Math.random() * 1000
+        };
+    }
+};
+
+const generate_server_metrics = (mode) => {
+    if (mode === "crash") {
+        return { cpu_usage: 96 + Math.floor(Math.random() * 5), ram_usage: 90 + Math.floor(Math.random() * 10) };
+    } else if (mode === "busy") {
+        return { cpu_usage: 50 + Math.floor(Math.random() * 30), ram_usage: 40 + Math.floor(Math.random() * 20) };
+    } else {
+        return { cpu_usage: 5 + Math.floor(Math.random() * 25), ram_usage: 20 + Math.floor(Math.random() * 20) };
+    }
+};
 
 // --- Components ---
 
@@ -214,7 +266,7 @@ const AttackSimulation = () => {
     const [activeModuleId, setActiveModuleId] = useState(null);
     const [logs, setLogs] = useState(INITIAL_LOGS);
     const [config, setConfig] = useState({
-        target: '192.168.1.10',
+        target: 'http://127.0.0.1:8006', // default to model microservice
         requests: 10000,
         threads: 64
     });
@@ -232,11 +284,26 @@ const AttackSimulation = () => {
             addLog('Error: No target specified for PING request.', 'error');
             return;
         }
-        addLog(`Pinging server ${config.target}...`, 'system');
-        setTimeout(() => {
-            const latency = Math.floor(Math.random() * 80) + 10;
-            addLog(`Server reply from ${config.target}: bytes=64 time=${latency}ms`, 'success');
-        }, 600);
+        addLog(`Pinging AI endpoint ${config.target}...`, 'system');
+
+        const apiUrl = `${config.target.replace(/\/$/, '')}/api/analyze`;
+        const probePayload = {
+            service_type: 'ping_test',
+            payload: "PING",
+            network_data: { Rate: 200, syn_count: 1, IAT: 1.2 },
+            server_metrics: { cpu_usage: 10 }
+        };
+
+        fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(probePayload)
+        })
+            .then(res => res.json())
+            .then(data => {
+                addLog(`AI replied: ${data.status || 'unknown'} | threat: ${data.threat_level || 'low'} | web_score=${data.web_ai_score ?? 'n/a'} net_score=${data.net_ai_score ?? 'n/a'}`, 'success');
+            })
+            .catch(() => addLog('Ping failed: AI endpoint unreachable.', 'error'));
     };
 
     const startAttack = async (moduleId) => {
@@ -252,63 +319,107 @@ const AttackSimulation = () => {
         addLog(`Initializing module: ${moduleId.toUpperCase()}`, 'warning');
         addLog(`Target: ${config.target} | Threads: ${config.threads}`, 'info');
 
-        // map internal IDs to backend attack types
-        const attackTypeMap = {
-            'sql': 'sql_injection',
-            'brute': 'brute_force',
-            'flood': 'flooding',
-            'scan': 'port_scan'
-        };
+        const apiUrl = `${config.target.replace(/\/$/, '')}/api/analyze`;
 
-        const payload = {
-            sector: "general",
-            attack_type: attackTypeMap[moduleId] || "unknown",
-            payload: { threads: config.threads, target: config.target }
+        // Build ML-friendly payloads to mirror simulation_driver.py
+        const attackPayloads = {
+            sql: {
+                service_type: 'web_frontend',
+                attack_type: 'sql_injection',
+                payload: SQL_PAYLOADS[Math.floor(Math.random() * SQL_PAYLOADS.length)],
+                network_data: generate_network_stats('normal'),
+                server_metrics: generate_server_metrics('normal')
+            },
+            brute: {
+                service_type: 'auth_service',
+                attack_type: 'brute_force',
+                payload: 'LOGIN_ATTEMPT',
+                auth_data: {
+                    username: 'admin',
+                    failed_attempts: 150 + Math.floor(Math.random() * 100),
+                    attempt_rate: 50 + Math.floor(Math.random() * 30)
+                },
+                network_data: generate_network_stats('heavy_load'),
+                server_metrics: generate_server_metrics('busy')
+            },
+            flood: {
+                service_type: 'api_gateway',
+                attack_type: 'ddos',
+                payload: 'TCP_FLOW_DATA_ONLY',
+                network_data: generate_network_stats('ddos'),
+                server_metrics: generate_server_metrics('busy')  // Not 'crash' - let Network Shield detect DDoS
+            },
+            scan: {
+                service_type: 'network_scanner',
+                attack_type: 'port_scan',
+                payload: 'NMAP_SYN_SCAN',
+                scan_data: {
+                    ports_scanned: 1000 + Math.floor(Math.random() * 64000),
+                    scan_rate: 500 + Math.floor(Math.random() * 500),
+                    syn_packets: 200 + Math.floor(Math.random() * 300)
+                },
+                network_data: generate_network_stats('scan'),
+                server_metrics: generate_server_metrics('normal')
+            }
         };
 
         try {
-            const response = await fetch('http://localhost:3001/attack', {
+            const res = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(attackPayloads[moduleId] || attackPayloads.sql)
             });
 
-            const data = await response.json();
+            const data = await res.json();
 
-            if (data.success) {
-                addLog(`[Backend] Attack routed successfully to ${data.nodes_targeted} nodes`, 'success');
-                if (data.results) {
-                    data.results.forEach(res => {
-                        addLog(`Node ${res.node_id}: ${res.status}`, res.status === 'delivered' ? 'info' : 'error');
-                    });
-                }
-            } else {
-                if (data.blocked) {
-                    addLog(`[SHIELD] Attack BLOCKED by Defense Engine: ${data.message}`, 'error');
+            if (res.ok) {
+                const aiStatus = data.status || 'allowed';
+                const aiThreat = data.threat_level || 'low';
+                addLog(`[AI] ${aiStatus.toUpperCase()} | source=${data.source || 'Model'} threat=${aiThreat} web=${data.web_ai_score ?? 'n/a'} net=${data.net_ai_score ?? 'n/a'}`, aiStatus === 'blocked' ? 'error' : 'success');
+
+                if (aiStatus === 'blocked') {
                     setStatus('BLOCKED');
-                } else {
-                    addLog(`[Backend] Error: ${data.error || 'Unknown error'}`, 'error');
                 }
+                setTimeout(() => {
+                    setStatus('READY');
+                    setActiveModuleId(null);
+                }, 1200);
+            } else {
+                addLog(`[AI] Error: ${data.error || res.statusText}`, 'error');
+                setStatus('READY');
+                setActiveModuleId(null);
             }
 
         } catch (e) {
-            addLog(`[Network] Failed to contact Gateway: ${e.message}`, 'error');
+            addLog(`[Network] AI endpoint unavailable. Using local simulation for visuals.`, 'warning');
+            setStatus('READY');
+            setActiveModuleId(null);
         }
 
-        // Still keep some visually simulated logs for effect if backend is quiet
+        // --- SIMULATION MODE (Or Visual Feedback) ---
         let counter = 0;
         timerRef.current = setInterval(() => {
             counter++;
             const rdm = Math.random();
 
-            // ... keep existing simulation logic for visual feedback ...
             if (moduleId === 'sql') {
-                if (rdm > 0.8) addLog(`[SQLi] Injecting payload: ' OR 1=1; --`, 'info');
+                if (rdm > 0.7) addLog(`[SQLi] Injecting payload: ' OR 1=1; DROP TABLE users --`, 'info');
+                else if (rdm > 0.9) addLog(`[SQLi] Database dump: 104 rows exported from 'admin_credentials'`, 'success');
             }
             else if (moduleId === 'brute') {
-                if (rdm > 0.7) addLog(`[Brute] Testing credential batch #${counter}...`, 'info');
+                addLog(`[Brute] Testing SSH credential batch #${counter}: root/password123...`, 'info');
+                if (rdm > 0.95) addLog(`[Brute] Handshake successful! Access granted.`, 'warning');
             }
-        }, 1500);
+            else if (moduleId === 'flood') {
+                addLog(`[DDoS] Sending ${config.threads * 50} UDP packets to ${config.target}:80`, 'info');
+                if (counter % 5 === 0) addLog(`[DDoS] Server latency spike detected: 4000ms`, 'error');
+            }
+            else if (moduleId === 'scan') {
+                if (rdm > 0.5) addLog(`[PortScan] Open port found: ${Math.random() > 0.5 ? '443 (HTTPS)' : '22 (SSH)'}`, 'success');
+                else addLog(`[PortScan] Scanning subnet 192.168.1.x...`, 'info');
+            }
+
+        }, 800);
     };
 
     const stopAttack = () => {

@@ -198,6 +198,44 @@ async def receive_device_status(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/ml-alert", tags=["ML Integration"])
+async def receive_ml_alert(data: dict):
+    """
+    Receive alerts from Model Microservice for real-time dashboard updates.
+    This enables the full pipeline: Model -> Gateway -> Frontend via Socket.IO
+    """
+    try:
+        # Format for frontend
+        alert_event = {
+            "id": f"ml_{data.get('id', datetime.utcnow().timestamp())}",
+            "title": data.get('message', 'ML Detection'),
+            "description": f"{data.get('source', 'AI')} - {data.get('message', '')}",
+            "severity": data.get('threat_level', 'high'),
+            "source": data.get('source', 'Model Microservice'),
+            "timestamp": data.get('timestamp', datetime.utcnow().isoformat() + 'Z'),
+            "acknowledged": False,
+            "evidence": {
+                "service": data.get('service', 'unknown'),
+                "payload_preview": data.get('payload_preview', ''),
+                "score": data.get('score', 0.9),
+                "model_score": data.get('model_score'),
+                "status": data.get('status', 'blocked')
+            },
+            "recommendation": "Review AI detection. Auto-blocked by ML model."
+        }
+        
+        # Broadcast to all connected frontend clients
+        await sio.emit('alert', alert_event)
+        await sio.emit('ml_detection', data)  # Raw ML data for debugging
+        
+        print(f"[ML] Broadcast: {data.get('source', 'AI')} - {data.get('message', '')[:50]}")
+        
+        return {"status": "broadcast", "clients": len(connected_clients), "alert_id": alert_event["id"]}
+        
+    except Exception as e:
+        print(f"ML Alert broadcast error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ==========================================
 # IP MANAGEMENT API
 # ==========================================

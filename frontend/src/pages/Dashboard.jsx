@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import io from 'socket.io-client';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import NodeSidebar from '../components/dashboard/NodeSidebar';
 import TelemetryPanel from '../components/dashboard/TelemetryPanel';
 import AlertsSidebar from '../components/dashboard/AlertsSidebar';
 
-const API_URL = 'http://localhost:3001';
+const API_URL = 'http://127.0.0.1:8006'; // model microservice
 
 const Dashboard = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -15,89 +14,80 @@ const Dashboard = () => {
     const [nodes, setNodes] = useState([]);
     const [selectedNode, setSelectedNode] = useState(null);
     const [stats, setStats] = useState({ events: 0, blocked: 0 });
-    const [socket, setSocket] = useState(null);
-
-    // Initial Fetch & Socket Setup
+    const [lastPollError, setLastPollError] = useState(null);
+    // Poll model microservice dashboard for real detections
     useEffect(() => {
-        // Fetch initial nodes
-        fetch(`${API_URL}/nodes`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.nodes) {
-                    setNodes(data.nodes);
-                    if (data.nodes.length > 0) setSelectedNode(data.nodes[0].node_id || data.nodes[0].id);
-                }
-            })
-            .catch(err => console.error("Failed to fetch nodes:", err));
+        const poll = async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/dashboard`);
+                const data = await res.json();
+                setLastPollError(null);
 
-        // Socket Connection
-        const newSocket = io(API_URL);
-        setSocket(newSocket);
+                const normalizedLogs = (data.logs || []).map(l => ({
+                    id: l.id || Date.now() + Math.random(),
+                    msg: `${l.service || 'unknown'} | ${l.message || l.status || 'event'}`,
+                    ts: l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
+                    status: l.status,
+                    score: l.score,
+                    threat: l.threat_level,
+                    source: l.source || 'System',
+                    is_ai_gen: l.is_ai_gen || false
+                })).slice(-50);
 
-        newSocket.on('connect', () => {
-            console.log('Connected to backend');
-        });
+                setLogs(normalizedLogs);
 
-        newSocket.on('telemetry', (data) => {
-            // Update Telemetry History
-            setTelemetryHistory(prev => {
-                const newPoint = {
-                    cpu: data.metrics.cpu,
-                    memory: data.metrics.memory,
-                    net: data.metrics.network
-                };
-                return [...prev.slice(1), newPoint];
-            });
+                // Derive alerts from blocked/warning entries
+                const derivedAlerts = normalizedLogs
+                    .filter(l => l.status === 'blocked' || l.status === 'warning')
+                    .map(l => ({
+                        id: l.id,
+                        type: l.status === 'blocked' ? 'critical' : 'warning',
+                        source: l.source || 'AI',
+                        msg: l.msg,
+                        conf: Math.round((l.score || 0) * 100),
+                        time: l.ts,
+                        isAiGen: l.is_ai_gen || false,
+                        isBlocked: l.status === 'blocked'
+                    }));
+                setAlerts(derivedAlerts);
 
-            // Add to Logs
-            setLogs(prev => [
-                ...prev.slice(-20),
-                {
-                    id: Date.now() + Math.random(),
-                    msg: `[${data.deviceName}] CPU:${data.metrics.cpu}% MEM:${data.metrics.memory}%`,
-                    ts: new Date().toLocaleTimeString()
-                }
-            ]);
+                // Update stats
+                setStats({
+                    events: data.total_logs || normalizedLogs.length,
+                    blocked: derivedAlerts.filter(a => a.type === 'critical').length
+                });
 
-            // Update Stats (Simulated increment for visual liveliness based on traffic)
-            setStats(prev => ({
-                events: prev.events + 1,
-                blocked: prev.blocked
-            }));
-        });
+                // Telemetry history: basic signal derived from log volume
+                const cpu = Math.min(99, 10 + (normalizedLogs.length % 70));
+                const memory = 40 + ((normalizedLogs.length * 3) % 40);
+                const net = 50 + ((normalizedLogs.length * 5) % 300);
+                setTelemetryHistory(prev => [...prev.slice(1), { cpu, memory, net }]);
 
-        newSocket.on('alert', (alert) => {
-            setAlerts(prev => [alert, ...prev].slice(0, 50));
-        });
+                // Nodes: single detection engine target
+                setNodes([{
+                    id: 'model-microservice',
+                    name: 'Detection Engine',
+                    ip: '127.0.0.1:8006',
+                    type: 'Firewall',
+                    status: 'online'
+                }]);
+                setSelectedNode('model-microservice');
 
-        newSocket.on('ip:blocked', (data) => {
-            // Add a critical alert for blocking
-            const newAlert = {
-                id: Date.now(),
-                type: 'critical',
-                source: 'Defense Engine',
-                msg: `Blocked IP ${data.ip} for ${data.reason}`,
-                conf: 99,
-                time: 'Just now'
-            };
-            setAlerts(prev => [newAlert, ...prev].slice(0, 50));
+            } catch (e) {
+                console.error('Dashboard poll failed', e);
+                setLastPollError('Model service unreachable');
+            }
+        };
 
-            setStats(prev => ({ ...prev, blocked: prev.blocked + 1 }));
-        });
-
-        newSocket.on('attack_routed', (data) => {
-            setLogs(prev => [
-                ...prev.slice(-20),
-                {
-                    id: Date.now(),
-                    msg: `⚡ ATTACK ROUTED: ${data.attack_type} -> ${data.sector} sector`,
-                    ts: new Date().toLocaleTimeString()
-                }
-            ]);
-        });
-
-        return () => newSocket.close();
+        poll();
+        const interval = setInterval(poll, 2000);
+        return () => clearInterval(interval);
     }, []);
+
+    const alertCounts = {
+        critical: alerts.filter(a => a.type === 'critical').length,
+        warning: alerts.filter(a => a.type === 'warning').length
+    };
 
     // Clock
     useEffect(() => {
@@ -165,7 +155,7 @@ const Dashboard = () => {
                         logs={logs}
                     />
 
-                    <AlertsSidebar alerts={alerts} />
+                    <AlertsSidebar alerts={alerts} alertCounts={alertCounts} lastPollError={lastPollError} />
                 </main>
             </div>
         </div>

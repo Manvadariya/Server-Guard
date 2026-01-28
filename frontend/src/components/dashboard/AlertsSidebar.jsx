@@ -1,7 +1,24 @@
-import React from 'react';
-import { ShieldAlert, AlertTriangle, CheckCircle2, XCircle, Play } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldAlert, AlertTriangle, CheckCircle2, XCircle, Play, WifiOff } from 'lucide-react';
 
-const AlertsSidebar = ({ alerts }) => {
+const AlertsSidebar = ({ alerts, alertCounts, lastPollError }) => {
+    const [activeFilter, setActiveFilter] = useState('All');
+    
+    // Filter alerts based on active filter
+    const filteredAlerts = alerts.filter(alert => {
+        switch (activeFilter) {
+            case 'AI-Gen':
+                return alert.isAiGen === true;
+            case 'Active':
+                return alert.type === 'critical' || alert.type === 'warning';
+            case 'Blocked':
+                return alert.isBlocked === true;
+            case 'All':
+            default:
+                return true;
+        }
+    });
+    
     return (
         <aside className="lg:col-span-3 flex flex-col gap-6">
 
@@ -10,15 +27,29 @@ const AlertsSidebar = ({ alerts }) => {
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400 font-mono">Active Alerts</h3>
                     <div className="flex gap-2">
-                        <span className="text-[10px] px-2 py-1 bg-red-500/10 text-red-400 border border-red-500/20 rounded-md">1 Crit</span>
-                        <span className="text-[10px] px-2 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-md">1 Warn</span>
+                        <span className="text-[10px] px-2 py-1 bg-red-500/10 text-red-400 border border-red-500/20 rounded-md">{alertCounts?.critical || 0} Crit</span>
+                        <span className="text-[10px] px-2 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-md">{alertCounts?.warning || 0} Warn</span>
                     </div>
                 </div>
 
+                {lastPollError && (
+                    <div className="flex items-center gap-2 text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 mb-3">
+                        <WifiOff size={14} /> {lastPollError}
+                    </div>
+                )}
+
                 {/* Filters */}
                 <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
-                    {['All', 'AI-Gen', 'Active', 'Blocked'].map((f, i) => (
-                        <button key={f} className={`px-3 py-1 rounded-full text-[10px] border whitespace-nowrap ${i === 1 ? 'bg-white/10 border-white/20 text-white' : 'border-white/5 text-zinc-500 hover:text-zinc-300'}`}>
+                    {['All', 'AI-Gen', 'Active', 'Blocked'].map((f) => (
+                        <button 
+                            key={f} 
+                            onClick={() => setActiveFilter(f)}
+                            className={`px-3 py-1 rounded-full text-[10px] border whitespace-nowrap transition-all ${
+                                activeFilter === f 
+                                    ? 'bg-[#ccf655]/20 border-[#ccf655]/40 text-[#ccf655]' 
+                                    : 'border-white/5 text-zinc-500 hover:text-zinc-300 hover:border-white/20'
+                            }`}
+                        >
                             {f}
                         </button>
                     ))}
@@ -26,7 +57,12 @@ const AlertsSidebar = ({ alerts }) => {
 
                 {/* Alerts List */}
                 <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-                    {alerts.map(alert => (
+                    {filteredAlerts.length === 0 && (
+                        <div className="text-center text-zinc-500 text-xs py-8">
+                            No alerts match the "{activeFilter}" filter
+                        </div>
+                    )}
+                    {filteredAlerts.map(alert => (
                         <div key={alert.id} className="p-4 rounded-xl bg-black/20 border border-white/5 hover:bg-white/5 transition-all group">
                             <div className="flex justify-between items-start mb-2">
                                 <div className="flex items-center gap-2">
