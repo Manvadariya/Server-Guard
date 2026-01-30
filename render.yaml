@@ -1,10 +1,11 @@
 # Render Blueprint - Server Guard Deployment
 # https://render.com/docs/blueprint-spec
 #
-# RENDER FREE TIER DEPLOYMENT
-# ============================
-# This configuration is optimized for Render's free tier.
-# Note: Free tier services spin down after inactivity and have cold starts.
+# UNIFIED SINGLE-CONTAINER DEPLOYMENT
+# ====================================
+# This configuration runs all backend services in a single container.
+# Services communicate via localhost, solving connectivity issues on free tier.
+# The container runs: API Gateway, Ingest, Detection, Alert, Response, and Model services.
 
 services:
   # ============================================
@@ -18,14 +19,14 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://server-guard-api-gateway.onrender.com
+        value: https://server-guard-backend.onrender.com
     routes:
       - type: rewrite
         source: /api/*
-        destination: https://server-guard-api-gateway.onrender.com/api/*
+        destination: https://server-guard-backend.onrender.com/api/*
       - type: rewrite
         source: /socket.io/*
-        destination: https://server-guard-api-gateway.onrender.com/socket.io/*
+        destination: https://server-guard-backend.onrender.com/socket.io/*
     headers:
       - path: /*
         name: X-Frame-Options
@@ -35,125 +36,41 @@ services:
         value: nosniff
 
   # ============================================
-  # API GATEWAY - Main Backend Entry Point (Free)
+  # UNIFIED BACKEND - All Services in One Container
+  # ============================================
+  # This single container runs all backend microservices:
+  # - API Gateway (main entry point, handles external requests)
+  # - Ingest Service (telemetry ingestion)
+  # - Detection Engine (rule-based + ML anomaly detection)
+  # - Alert Manager (alert generation and routing)
+  # - Response Engine (automated incident response / SOAR)
+  # - Model Service (ML models for threat detection)
+  #
+  # All services communicate via localhost, eliminating
+  # inter-service connectivity issues on Render free tier.
   # ============================================
   - type: web
-    name: server-guard-api-gateway
-    runtime: python
+    name: server-guard-backend
+    runtime: docker
     plan: free
-    rootDir: backend/api-gateway
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:socket_app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./Dockerfile.unified
+    dockerContext: .
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
       - key: DEMO_MODE
         value: "true"
+      # Internal localhost URLs (set in Dockerfile, but can be overridden)
       - key: INGEST_SERVICE_URL
-        value: https://server-guard-ingest-service.onrender.com
+        value: http://127.0.0.1:8001
       - key: DETECTION_ENGINE_URL
-        value: https://server-guard-detection-engine.onrender.com
+        value: http://127.0.0.1:8002
       - key: ALERT_MANAGER_URL
-        value: https://server-guard-alert-manager.onrender.com
+        value: http://127.0.0.1:8003
       - key: RESPONSE_ENGINE_URL
-        value: https://server-guard-response-engine.onrender.com
+        value: http://127.0.0.1:8004
       - key: MODEL_SERVICE_URL
-        value: https://server-guard-model-service.onrender.com
-    healthCheckPath: /health
-
-  # ============================================
-  # DETECTION ENGINE (Free)
-  # ============================================
-  - type: web
-    name: server-guard-detection-engine
-    runtime: python
-    plan: free
-    rootDir: backend/detection-engine
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
-      - key: ALERT_MANAGER_URL
-        value: https://server-guard-alert-manager.onrender.com
-      - key: MODEL_SERVICE_URL
-        value: https://server-guard-model-service.onrender.com
-    healthCheckPath: /health
-
-  # ============================================
-  # INGEST SERVICE (Free)
-  # Note: Uses in-memory/ephemeral storage on free tier
-  # ============================================
-  - type: web
-    name: server-guard-ingest-service
-    runtime: python
-    plan: free
-    rootDir: backend/ingest-service
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:socket_app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
-      - key: DETECTION_ENGINE_URL
-        value: https://server-guard-detection-engine.onrender.com
+        value: http://127.0.0.1:8006
       - key: API_GATEWAY_URL
-        value: https://server-guard-api-gateway.onrender.com
-    healthCheckPath: /health
-
-  # ============================================
-  # ALERT MANAGER (Free)
-  # ============================================
-  - type: web
-    name: server-guard-alert-manager
-    runtime: python
-    plan: free
-    rootDir: backend/alert-manager
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
-      - key: API_GATEWAY_URL
-        value: https://server-guard-api-gateway.onrender.com
-      - key: RESPONSE_ENGINE_URL
-        value: https://server-guard-response-engine.onrender.com
-    healthCheckPath: /health
-
-  # ============================================
-  # RESPONSE ENGINE / SOAR (Free)
-  # ============================================
-  - type: web
-    name: server-guard-response-engine
-    runtime: python
-    plan: free
-    rootDir: backend/response-engine
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
-      - key: API_GATEWAY_URL
-        value: https://server-guard-api-gateway.onrender.com
-    healthCheckPath: /health
-
-  # ============================================
-  # ML MODEL SERVICE (Free)
-  # Note: PyTorch models may require optimization for free tier memory limits
-  # ============================================
-  - type: web
-    name: server-guard-model-service
-    runtime: python
-    plan: free
-    rootDir: model_microservice
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.11"
-      - key: ALERT_MANAGER_URL
-        value: https://server-guard-alert-manager.onrender.com
-      - key: API_GATEWAY_URL
-        value: https://server-guard-api-gateway.onrender.com
-      - key: RESPONSE_ENGINE_URL
-        value: https://server-guard-response-engine.onrender.com
+        value: http://127.0.0.1:3001
     healthCheckPath: /health
