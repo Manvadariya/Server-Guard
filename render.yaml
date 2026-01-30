@@ -18,10 +18,7 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: server-guard-api-gateway
-          property: host
+        value: https://server-guard-api-gateway.onrender.com
     routes:
       - type: rewrite
         source: /api/*
@@ -50,6 +47,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
+      - key: DEMO_MODE
+        value: "true"
       - key: INGEST_SERVICE_URL
         value: https://server-guard-ingest-service.onrender.com
       - key: DETECTION_ENGINE_URL

@@ -1,5 +1,7 @@
 import os
 import asyncio
+import random
+import uuid
 from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Dict, Set, Optional, List
@@ -18,6 +20,9 @@ PORT = int(os.environ.get("PORT", 3001))
 INGEST_SERVICE_URL = os.environ.get("INGEST_SERVICE_URL", "http://127.0.0.1:8001")
 RESPONSE_ENGINE_URL = os.environ.get("RESPONSE_ENGINE_URL", "http://127.0.0.1:8004")
 MODEL_SERVICE_URL = os.environ.get("MODEL_SERVICE_URL", "http://127.0.0.1:5000")
+
+# Enable demo mode for Render deployment (generates sample telemetry)
+DEMO_MODE = os.environ.get("DEMO_MODE", "true").lower() == "true"
 
 class TelemetryEvent(BaseModel):
     event_id: str
@@ -84,6 +89,45 @@ async def disconnect(sid):
 async def ping(sid, data):
     await sio.emit('pong', {'timestamp': datetime.utcnow().isoformat() + 'Z'}, to=sid)
 
+
+async def demo_telemetry_generator():
+    """
+    Background task that generates demo telemetry data for the dashboard.
+    This ensures the frontend always has data to display, even without external traffic.
+    """
+    services = ["web-server-01", "api-gateway-01", "db-server-01", "auth-service", "cache-01"]
+    
+    while True:
+        try:
+            # Generate normal telemetry every 3 seconds
+            service = random.choice(services)
+            cpu = random.uniform(15, 45)
+            memory = random.uniform(25, 55)
+            network = random.uniform(20, 100)
+            
+            telemetry_event = {
+                "deviceId": service,
+                "deviceName": service.replace("-", " ").title(),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "metrics": {
+                    "cpu": cpu,
+                    "memory": memory,
+                    "network": network,
+                    "requests": random.randint(10, 50),
+                }
+            }
+            
+            # Broadcast to all connected clients
+            if connected_clients:
+                await sio.emit('telemetry', telemetry_event)
+            
+            await asyncio.sleep(3)
+            
+        except Exception as e:
+            print(f"Demo telemetry error: {e}")
+            await asyncio.sleep(5)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Set Socket.IO reference for middleware events
@@ -99,12 +143,26 @@ async def lifespan(app: FastAPI):
             await asyncio.sleep(0.1)  # Process every 100ms
 
     event_task = asyncio.create_task(event_processor())
+    
+    # Start demo telemetry generator if enabled
+    demo_task = None
+    if DEMO_MODE:
+        demo_task = asyncio.create_task(demo_telemetry_generator())
+        print("Demo Mode: Background telemetry generator started")
 
     print(f"API Gateway running on port {PORT}")
     print(f"Ingest URL: {INGEST_SERVICE_URL}")
     print(f"IP Manager: Active with auto-cleanup")
     print(f"Detection: SQL Injection, Brute Force, Flooding enabled")
     yield
+
+    # Stop demo telemetry generator
+    if demo_task:
+        demo_task.cancel()
+        try:
+            await demo_task
+        except asyncio.CancelledError:
+            pass
 
     # Stop event processor
     event_task.cancel()
