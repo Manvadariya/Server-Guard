@@ -1,0 +1,46 @@
+# Server Guard - Unified Dockerfile
+# Single container deployment running all services using localhost communication
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements-unified.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements-unified.txt
+
+# Copy all application code
+COPY backend/ ./backend/
+COPY model_microservice/ ./model_microservice/
+COPY unified_app.py .
+
+# Ensure all service directories are accessible
+RUN chmod +x unified_app.py
+
+# Default port (API Gateway) - Render will set this via $PORT
+ENV PORT=3001
+
+# Environment variables for localhost inter-service communication
+ENV INGEST_SERVICE_URL=http://127.0.0.1:8001
+ENV DETECTION_ENGINE_URL=http://127.0.0.1:8002
+ENV ALERT_MANAGER_URL=http://127.0.0.1:8003
+ENV RESPONSE_ENGINE_URL=http://127.0.0.1:8004
+ENV MODEL_SERVICE_URL=http://127.0.0.1:8006
+ENV API_GATEWAY_URL=http://127.0.0.1:3001
+ENV DEMO_MODE=true
+ENV PYTHON_VERSION=3.11
+
+# Health check - allow 120 seconds for all services to initialize
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Run the unified application
+CMD ["python", "unified_app.py"]
