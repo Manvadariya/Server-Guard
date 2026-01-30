@@ -60,17 +60,6 @@ services:
         value: "3.11"
       - key: DEMO_MODE
         value: "true"
-      # Internal localhost URLs (set in Dockerfile, but can be overridden)
-      - key: INGEST_SERVICE_URL
-        value: http://127.0.0.1:8001
-      - key: DETECTION_ENGINE_URL
-        value: http://127.0.0.1:8002
-      - key: ALERT_MANAGER_URL
-        value: http://127.0.0.1:8003
-      - key: RESPONSE_ENGINE_URL
-        value: http://127.0.0.1:8004
-      - key: MODEL_SERVICE_URL
-        value: http://127.0.0.1:8006
-      - key: API_GATEWAY_URL
-        value: http://127.0.0.1:3001
+      # Internal localhost URLs are configured in Dockerfile.unified
+      # No need to override them here - services communicate via localhost
     healthCheckPath: /health

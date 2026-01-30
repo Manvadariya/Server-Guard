@@ -8,7 +8,6 @@ can have connectivity problems.
 
 import os
 import sys
-import asyncio
 import multiprocessing
 import time
 import signal
@@ -143,10 +142,23 @@ def main():
     # Start the API Gateway in the main process (handles external traffic)
     print(f"[Unified] Starting API Gateway (main entry point)...")
     
-    def signal_handler(signum, frame):
-        print("\n[Unified] Shutting down all services...")
+    def cleanup_processes():
+        """Gracefully terminate all child processes"""
+        print("[Unified] Cleaning up child processes...")
         for p in processes:
-            p.terminate()
+            if p.is_alive():
+                p.terminate()
+        # Wait for graceful shutdown
+        for p in processes:
+            p.join(timeout=10)
+            if p.is_alive():
+                print(f"[Unified] Force killing process {p.pid}")
+                p.kill()
+                p.join(timeout=2)
+    
+    def signal_handler(signum, frame):
+        print("\n[Unified] Received shutdown signal...")
+        cleanup_processes()
         sys.exit(0)
     
     signal.signal(signal.SIGINT, signal_handler)
@@ -157,11 +169,16 @@ def main():
         run_api_gateway()
     except KeyboardInterrupt:
         print("\n[Unified] Shutting down...")
+    except Exception as e:
+        print(f"[Unified] Gateway error: {e}")
     finally:
-        for p in processes:
-            p.terminate()
-            p.join(timeout=5)
+        cleanup_processes()
 
 if __name__ == "__main__":
-    multiprocessing.set_start_method('spawn', force=True)
+    # Use 'spawn' start method for cross-platform compatibility
+    # Check if already set to avoid errors
+    try:
+        multiprocessing.set_start_method('spawn')
+    except RuntimeError:
+        pass  # Already set
     main()
