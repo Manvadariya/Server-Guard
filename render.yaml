@@ -24,7 +24,7 @@ services:
     routes:
       - type: rewrite
         source: /api/*
-        destination: https://server-guard-api-gateway.onrender.com/*
+        destination: https://server-guard-api-gateway.onrender.com/api/*
       - type: rewrite
         source: /socket.io/*
         destination: https://server-guard-api-gateway.onrender.com/socket.io/*
