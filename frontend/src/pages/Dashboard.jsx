@@ -3,11 +3,10 @@ import DashboardHeader from '../components/dashboard/DashboardHeader';
 import NodeSidebar from '../components/dashboard/NodeSidebar';
 import TelemetryPanel from '../components/dashboard/TelemetryPanel';
 import AlertsSidebar from '../components/dashboard/AlertsSidebar';
+import { API_CONFIG, buildApiUrl } from '../config/api';
 
-// Use relative URL in production (nginx proxies /api to backend)
-// In development, use localhost
-const isDev = import.meta.env.DEV;
-const API_URL = isDev ? 'http://127.0.0.1:8006' : '/api';
+// Use centralized API configuration
+const API_URL = API_CONFIG.API_GATEWAY;
 
 const Dashboard = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
