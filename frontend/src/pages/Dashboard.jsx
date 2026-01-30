@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import NodeSidebar from '../components/dashboard/NodeSidebar';
 import TelemetryPanel from '../components/dashboard/TelemetryPanel';
@@ -17,11 +17,44 @@ const Dashboard = () => {
     const [selectedNode, setSelectedNode] = useState(null);
     const [stats, setStats] = useState({ events: 0, blocked: 0 });
     const [lastPollError, setLastPollError] = useState(null);
+    
+    // Use refs to track abort controller and timeout for proper cleanup
+    const abortControllerRef = useRef(null);
+    const timeoutIdRef = useRef(null);
+    
     // Poll model microservice dashboard for real detections
     useEffect(() => {
         const poll = async () => {
+            // Cleanup previous request if still pending
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+            if (timeoutIdRef.current) {
+                clearTimeout(timeoutIdRef.current);
+            }
+            
+            // Create a new AbortController for each request
+            abortControllerRef.current = new AbortController();
+            timeoutIdRef.current = setTimeout(() => {
+                if (abortControllerRef.current) {
+                    abortControllerRef.current.abort();
+                }
+            }, 5000); // 5 second timeout
+            
             try {
-                const res = await fetch(`${API_URL}/api/dashboard`);
+                const res = await fetch(`${API_URL}/api/dashboard`, {
+                    signal: abortControllerRef.current.signal
+                });
+                
+                if (timeoutIdRef.current) {
+                    clearTimeout(timeoutIdRef.current);
+                    timeoutIdRef.current = null;
+                }
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                
                 const data = await res.json();
                 setLastPollError(null);
 
@@ -113,14 +146,30 @@ const Dashboard = () => {
                 setSelectedNode('model-microservice');
 
             } catch (e) {
-                console.error('Dashboard poll failed', e);
-                setLastPollError('Model service unreachable');
+                // Clear timeout if still pending
+                if (timeoutIdRef.current) {
+                    clearTimeout(timeoutIdRef.current);
+                    timeoutIdRef.current = null;
+                }
+                // Only log error if not aborted due to cleanup
+                if (e.name !== 'AbortError') {
+                    console.error('Dashboard poll failed', e);
+                    setLastPollError('Model service unreachable');
+                }
             }
         };
 
         poll();
         const interval = setInterval(poll, 2000);
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+            if (timeoutIdRef.current) {
+                clearTimeout(timeoutIdRef.current);
+            }
+        };
     }, []);
 
     const alertCounts = {

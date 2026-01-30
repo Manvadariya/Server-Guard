@@ -20,11 +20,16 @@ app = Flask(__name__)
 CORS(app) # Enable Cross-Origin for Dashboard
 DEVICE = torch.device("cpu") # Inference on CPU is standard for web APIs
 SYSTEM_LOGS = [] # In-memory storage for the dashboard
+SYSTEM_LOGS_LOCK = threading.Lock()  # Thread-safe access to SYSTEM_LOGS
 
 # Backend Service URLs for full integration
 ALERT_MANAGER_URL = os.environ.get("ALERT_MANAGER_URL", "http://127.0.0.1:8003")
 API_GATEWAY_URL = os.environ.get("API_GATEWAY_URL", "http://127.0.0.1:3001")
 RESPONSE_ENGINE_URL = os.environ.get("RESPONSE_ENGINE_URL", "http://127.0.0.1:8004")
+
+# Simulation mode - when True, detection is bypassed (for Render demo/simulation)
+# Set SIMULATION_MODE=true to allow attack simulations without blocking
+SIMULATION_MODE = os.environ.get("SIMULATION_MODE", "true").lower() == "true"
 
 # ==========================================
 # 1. MODEL ARCHITECTURES (Fixed to match train.py)
@@ -184,6 +189,42 @@ def adapt_network_features(sim_data):
     # 4. Return ordered values as DataFrame
     return pd.DataFrame([features], columns=net_cols)
 
+def create_detection_log(service, status, threat_level, source, message, score, source_ip, **extra_fields):
+    """
+    Helper function to create detection log entries.
+    In SIMULATION_MODE, attacks are logged as "detected" instead of "blocked"
+    to allow the simulation to continue without interruption.
+    """
+    # In simulation mode, change "blocked" to "detected" for display purposes
+    # This allows attacks to be shown in the dashboard without actually blocking
+    display_status = status
+    if SIMULATION_MODE and status == "blocked":
+        display_status = "detected"
+    
+    with SYSTEM_LOGS_LOCK:
+        log_id = len(SYSTEM_LOGS) + 1
+    
+    log_entry = {
+        "id": log_id,
+        "timestamp": datetime.now().isoformat(),
+        "service": service,
+        "status": display_status,
+        "threat_level": threat_level,
+        "source": source,
+        "message": message,
+        "score": score,
+        "model_score": score,
+        "is_ai_gen": True,
+        "source_ip": source_ip,
+        "simulation_mode": SIMULATION_MODE
+    }
+    log_entry.update(extra_fields)
+    
+    with SYSTEM_LOGS_LOCK:
+        SYSTEM_LOGS.append(log_entry)
+    
+    return log_entry
+
 # ==========================================
 # 5. API ENDPOINTS
 # ==========================================
@@ -212,11 +253,34 @@ def get_dashboard():
         "timestamp": datetime.now().isoformat()
     })
 
+@app.route('/api/hard-stop', methods=['POST'])
+def hard_stop():
+    """
+    Hard stop endpoint to clear all attack logs and reset the system.
+    This frees the backend from any lingering attack state.
+    """
+    global SYSTEM_LOGS
+    with SYSTEM_LOGS_LOCK:
+        cleared_count = len(SYSTEM_LOGS)
+        SYSTEM_LOGS = []
+    
+    print("[*] Hard stop executed - All logs cleared")
+    
+    return jsonify({
+        "status": "success",
+        "message": "Hard stop executed - All attacks cleared",
+        "cleared_logs": cleared_count,
+        "timestamp": datetime.now().isoformat()
+    })
+
 @app.route('/api/analyze', methods=['POST'])
 def analyze_packet():
     """
     Main Analysis Pipeline:
     Request -> Web Brain (Layer 1) -> Network Brain (Layer 2) -> Heuristics (Layer 3)
+    
+    In SIMULATION_MODE (default on Render), ALL DETECTION IS DISABLED.
+    This allows the frontend simulation to run without any protection/detection.
     """
     try:
         req = request.json
@@ -240,6 +304,22 @@ def analyze_packet():
             }
         }
 
+        # ============================================================
+        # SIMULATION MODE: Skip ALL detection - just allow everything
+        # ============================================================
+        if SIMULATION_MODE:
+            # In simulation mode, skip all detection and just return allowed
+            # This completely disables protection on Render
+            response.update({
+                "simulation_mode": True,
+                "message": "Simulation mode - all protection disabled"
+            })
+            return jsonify(response)
+
+        # ============================================================
+        # PRODUCTION MODE: Full detection pipeline (only when SIMULATION_MODE=false)
+        # ============================================================
+
         # --- LAYER 0: BRUTE FORCE DETECTION ---
         if 'auth_data' in req or req.get('attack_type') == 'brute_force':
             auth_data = req.get('auth_data', {})
@@ -249,21 +329,16 @@ def analyze_packet():
             if failed_attempts > 50 or attempt_rate > 30:
                 # High confidence for brute force - clear pattern
                 bf_score = min(0.98, 0.85 + (failed_attempts / 1000))
-                log_entry = {
-                    "id": len(SYSTEM_LOGS) + 1,
-                    "timestamp": datetime.now().isoformat(),
-                    "service": service,
-                    "status": "blocked",
-                    "threat_level": "critical",
-                    "source": "Auth Guardian",
-                    "message": f"Brute Force Attack Detected ({failed_attempts} failed attempts)",
-                    "payload_preview": f"User: {auth_data.get('username', 'unknown')}",
-                    "score": bf_score,
-                    "model_score": bf_score,
-                    "is_ai_gen": True,
-                    "source_ip": source_ip
-                }
-                SYSTEM_LOGS.append(log_entry)
+                log_entry = create_detection_log(
+                    service=service,
+                    status="blocked",
+                    threat_level="critical",
+                    source="Auth Guardian",
+                    message=f"Brute Force Attack Detected ({failed_attempts} failed attempts)",
+                    score=bf_score,
+                    source_ip=source_ip,
+                    payload_preview=f"User: {auth_data.get('username', 'unknown')}"
+                )
                 forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
                 notify_gateway_async(log_entry)  # Notify API Gateway
                 return jsonify(log_entry)
@@ -278,21 +353,16 @@ def analyze_packet():
             if ports_scanned > 100 or scan_rate > 50 or syn_packets > 100:
                 # High confidence for port scan - clear pattern
                 scan_score = min(0.97, 0.88 + (ports_scanned / 50000))
-                log_entry = {
-                    "id": len(SYSTEM_LOGS) + 1,
-                    "timestamp": datetime.now().isoformat(),
-                    "service": service,
-                    "status": "blocked",
-                    "threat_level": "high",
-                    "source": "Network Sentinel",
-                    "message": f"Port Scan Detected ({ports_scanned} ports, {syn_packets} SYN packets)",
-                    "payload_preview": f"Scan rate: {scan_rate}/sec",
-                    "score": scan_score,
-                    "model_score": scan_score,
-                    "is_ai_gen": True,
-                    "source_ip": source_ip
-                }
-                SYSTEM_LOGS.append(log_entry)
+                log_entry = create_detection_log(
+                    service=service,
+                    status="blocked",
+                    threat_level="high",
+                    source="Network Sentinel",
+                    message=f"Port Scan Detected ({ports_scanned} ports, {syn_packets} SYN packets)",
+                    score=scan_score,
+                    source_ip=source_ip,
+                    payload_preview=f"Scan rate: {scan_rate}/sec"
+                )
                 forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
                 notify_gateway_async(log_entry)  # Notify API Gateway
                 return jsonify(log_entry)
@@ -333,22 +403,17 @@ def analyze_packet():
                 final_score = max(ai_score, 0.75)  # ML detection gets at least 75%
                 
             if ai_score > 0.3 or heuristic_hit:
-                log_entry = {
-                    "id": len(SYSTEM_LOGS) + 1,
-                    "timestamp": datetime.now().isoformat(),
-                    "service": service,
-                    "status": "blocked",
-                    "threat_level": "critical",
-                    "source": "Web Gatekeeper",
-                    "message": f"Malicious Web Payload Detected (SQLi/XSS)",
-                    "payload_preview": raw_text[:50],
-                    "score": min(0.99, final_score),
-                    "model_score": ai_score if ai_score else None,
-                    "heuristic_match": heuristic_hit,
-                    "is_ai_gen": web_model_used and ai_score > 0.1,
-                    "source_ip": source_ip
-                }
-                SYSTEM_LOGS.append(log_entry)
+                log_entry = create_detection_log(
+                    service=service,
+                    status="blocked",
+                    threat_level="critical",
+                    source="Web Gatekeeper",
+                    message="Malicious Web Payload Detected (SQLi/XSS)",
+                    score=min(0.99, final_score),
+                    source_ip=source_ip,
+                    payload_preview=raw_text[:50],
+                    heuristic_match=heuristic_hit
+                )
                 forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
                 notify_gateway_async(log_entry)  # Notify API Gateway
                 return jsonify(log_entry)
@@ -397,21 +462,16 @@ def analyze_packet():
                 
             # Trigger if heuristic matches OR ML detects attack
             if heuristic_ddos or (net_model and net_prob > 0.4):
-                log_entry = {
-                    "id": len(SYSTEM_LOGS) + 1,
-                    "timestamp": datetime.now().isoformat(),
-                    "service": service,
-                    "status": "blocked",
-                    "threat_level": "critical",
-                    "source": "Network Shield",
-                    "message": "Anomalous Traffic Flow Detected (DDoS Signature)",
-                    "score": min(0.99, final_net_score),
-                    "model_score": net_prob if net_model else None,
-                    "heuristic": heuristic_ddos,
-                    "is_ai_gen": net_model_used and net_prob > 0.3,
-                    "source_ip": source_ip
-                }
-                SYSTEM_LOGS.append(log_entry)
+                log_entry = create_detection_log(
+                    service=service,
+                    status="blocked",
+                    threat_level="critical",
+                    source="Network Shield",
+                    message="Anomalous Traffic Flow Detected (DDoS Signature)",
+                    score=min(0.99, final_net_score),
+                    source_ip=source_ip,
+                    heuristic=heuristic_ddos
+                )
                 forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
                 notify_gateway_async(log_entry)  # Notify API Gateway
                 return jsonify(log_entry)
@@ -422,35 +482,34 @@ def analyze_packet():
             cpu = metrics.get('cpu_usage', 0)
             
             if cpu > 95:
-                log_entry = {
-                    "id": len(SYSTEM_LOGS) + 1,
-                    "timestamp": datetime.now().isoformat(),
-                    "service": service,
-                    "status": "warning",
-                    "threat_level": "high",
-                    "source": "Resource Monitor",
-                    "message": f"Critical CPU Usage: {cpu}%",
-                    "score": 1.0,
-                    "source_ip": source_ip
-                }
-                SYSTEM_LOGS.append(log_entry)
+                log_entry = create_detection_log(
+                    service=service,
+                    status="warning",
+                    threat_level="high",
+                    source="Resource Monitor",
+                    message=f"Critical CPU Usage: {cpu}%",
+                    score=1.0,
+                    source_ip=source_ip
+                )
                 forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
                 return jsonify(log_entry)
 
         # --- LOG NORMAL/ALLOWED TRAFFIC (Always record last event) ---
-        SYSTEM_LOGS.append({
-            "id": len(SYSTEM_LOGS) + 1,
-            "timestamp": datetime.now().isoformat(),
-            "service": service,
-            "status": "allowed",
-            "message": "Traffic Normal",
-            "score": (web_ai_score or net_ai_score or 0.0),
-            "web_score": web_ai_score,
-            "net_score": net_ai_score,
-            "web_used": web_model_used,
-            "net_used": net_model_used,
-            "source": "Normal Monitor"
-        })
+        with SYSTEM_LOGS_LOCK:
+            log_id = len(SYSTEM_LOGS) + 1
+            SYSTEM_LOGS.append({
+                "id": log_id,
+                "timestamp": datetime.now().isoformat(),
+                "service": service,
+                "status": "allowed",
+                "message": "Traffic Normal",
+                "score": (web_ai_score or net_ai_score or 0.0),
+                "web_score": web_ai_score,
+                "net_score": net_ai_score,
+                "web_used": web_model_used,
+                "net_used": net_model_used,
+                "source": "Normal Monitor"
+            })
 
         # Attach scores/status to the final response for visibility
         response.update({

@@ -782,6 +782,62 @@ async def proxy_dashboard():
         raise HTTPException(status_code=503, detail="Model Service Unavailable")
 
 
+@app.post("/api/hard-stop", tags=["Model Service Proxy"])
+async def proxy_hard_stop():
+    """
+    Hard stop all attacks - clears model service logs and IP blocks.
+    This frees the backend from any lingering attack state or API calls.
+    """
+    results = {
+        "model_service": None,
+        "ip_manager": None,
+        "success": False
+    }
+    
+    model_success = False
+    ip_success = False
+    
+    # 1. Clear model service logs
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{MODEL_SERVICE_URL}/api/hard-stop") as resp:
+                if resp.status == 200:
+                    results["model_service"] = await resp.json()
+                    model_success = True
+                else:
+                    results["model_service"] = {"error": f"Status {resp.status}"}
+    except aiohttp.ClientError as e:
+        results["model_service"] = {"error": str(e)}
+    
+    # 2. Clear all IP blocks
+    try:
+        ip_result = ip_manager.clear_all()
+        results["ip_manager"] = ip_result
+        ip_success = True
+        
+        # Broadcast to frontend
+        await sio.emit('ip:cleared', {
+            "cleared_count": ip_result.get("cleared_count", 0),
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        })
+        await sio.emit('hard_stop', {
+            "message": "Hard stop executed - All attacks cleared",
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        })
+    except Exception as e:
+        results["ip_manager"] = {"error": str(e)}
+    
+    # Set success only if at least one operation succeeded
+    results["success"] = model_success or ip_success
+    
+    if results["success"]:
+        print("[*] Hard stop executed - All attacks and logs cleared")
+    else:
+        print("[!] Hard stop failed - Both model service and IP manager operations failed")
+    
+    return results
+
+
 # ============================================================
 # TELEMETRY AND SUMMARY ENDPOINTS FOR FRONTEND
 # ============================================================
