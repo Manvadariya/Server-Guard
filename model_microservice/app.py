@@ -350,8 +350,6 @@ def analyze_packet():
                 )
                 if not SIMULATION_MODE:
                     forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
-                if not SIMULATION_MODE:
-                    forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
                     notify_gateway_async(log_entry)  # Notify API Gateway
                 return jsonify(log_entry)
 
