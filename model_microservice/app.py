@@ -279,8 +279,8 @@ def analyze_packet():
     Main Analysis Pipeline:
     Request -> Web Brain (Layer 1) -> Network Brain (Layer 2) -> Heuristics (Layer 3)
     
-    In SIMULATION_MODE (default on Render), attacks are logged but not blocked,
-    allowing the frontend simulation to demonstrate detection without interruption.
+    In SIMULATION_MODE (default on Render), ALL DETECTION IS DISABLED.
+    This allows the frontend simulation to run without any protection/detection.
     """
     try:
         req = request.json
@@ -304,6 +304,22 @@ def analyze_packet():
             }
         }
 
+        # ============================================================
+        # SIMULATION MODE: Skip ALL detection - just allow everything
+        # ============================================================
+        if SIMULATION_MODE:
+            # In simulation mode, skip all detection and just return allowed
+            # This completely disables protection on Render
+            response.update({
+                "simulation_mode": True,
+                "message": "Simulation mode - all protection disabled"
+            })
+            return jsonify(response)
+
+        # ============================================================
+        # PRODUCTION MODE: Full detection pipeline (only when SIMULATION_MODE=false)
+        # ============================================================
+
         # --- LAYER 0: BRUTE FORCE DETECTION ---
         if 'auth_data' in req or req.get('attack_type') == 'brute_force':
             auth_data = req.get('auth_data', {})
@@ -323,9 +339,8 @@ def analyze_packet():
                     source_ip=source_ip,
                     payload_preview=f"User: {auth_data.get('username', 'unknown')}"
                 )
-                if not SIMULATION_MODE:
-                    forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
-                    notify_gateway_async(log_entry)  # Notify API Gateway
+                forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
+                notify_gateway_async(log_entry)  # Notify API Gateway
                 return jsonify(log_entry)
 
         # --- LAYER 0.5: PORT SCAN DETECTION ---
@@ -348,9 +363,8 @@ def analyze_packet():
                     source_ip=source_ip,
                     payload_preview=f"Scan rate: {scan_rate}/sec"
                 )
-                if not SIMULATION_MODE:
-                    forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
-                    notify_gateway_async(log_entry)  # Notify API Gateway
+                forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
+                notify_gateway_async(log_entry)  # Notify API Gateway
                 return jsonify(log_entry)
 
         # --- LAYER 1: WEB GATEKEEPER (SQLi/XSS Detection) ---
@@ -400,9 +414,8 @@ def analyze_packet():
                     payload_preview=raw_text[:50],
                     heuristic_match=heuristic_hit
                 )
-                if not SIMULATION_MODE:
-                    forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
-                    notify_gateway_async(log_entry)  # Notify API Gateway
+                forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
+                notify_gateway_async(log_entry)  # Notify API Gateway
                 return jsonify(log_entry)
 
         # --- LAYER 2: NETWORK SHIELD (DDoS/Flow Detection) ---
@@ -459,9 +472,8 @@ def analyze_packet():
                     source_ip=source_ip,
                     heuristic=heuristic_ddos
                 )
-                if not SIMULATION_MODE:
-                    forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
-                    notify_gateway_async(log_entry)  # Notify API Gateway
+                forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
+                notify_gateway_async(log_entry)  # Notify API Gateway
                 return jsonify(log_entry)
 
         # --- LAYER 3: RESOURCE MONITOR (Metrics) ---
@@ -479,8 +491,7 @@ def analyze_packet():
                     score=1.0,
                     source_ip=source_ip
                 )
-                if not SIMULATION_MODE:
-                    forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
+                forward_alert_async(log_entry, source_ip)  # Notify Alert Manager
                 return jsonify(log_entry)
 
         # --- LOG NORMAL/ALLOWED TRAFFIC (Always record last event) ---
