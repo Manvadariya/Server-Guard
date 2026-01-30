@@ -1,7 +1,6 @@
 import os
 import asyncio
 import random
-import uuid
 from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Dict, Set, Optional, List
@@ -22,7 +21,7 @@ RESPONSE_ENGINE_URL = os.environ.get("RESPONSE_ENGINE_URL", "http://127.0.0.1:80
 MODEL_SERVICE_URL = os.environ.get("MODEL_SERVICE_URL", "http://127.0.0.1:5000")
 
 # Enable demo mode for Render deployment (generates sample telemetry)
-DEMO_MODE = os.environ.get("DEMO_MODE", "true").lower() == "true"
+DEMO_MODE = os.environ.get("DEMO_MODE", "false").lower() == "true"
 
 class TelemetryEvent(BaseModel):
     event_id: str
@@ -94,11 +93,17 @@ async def demo_telemetry_generator():
     """
     Background task that generates demo telemetry data for the dashboard.
     This ensures the frontend always has data to display, even without external traffic.
+    Only generates data when clients are connected to save resources.
     """
     services = ["web-server-01", "api-gateway-01", "db-server-01", "auth-service", "cache-01"]
     
     while True:
         try:
+            # Only generate telemetry when clients are connected
+            if not connected_clients:
+                await asyncio.sleep(5)
+                continue
+                
             # Generate normal telemetry every 3 seconds
             service = random.choice(services)
             cpu = random.uniform(15, 45)
@@ -118,13 +123,14 @@ async def demo_telemetry_generator():
             }
             
             # Broadcast to all connected clients
-            if connected_clients:
-                await sio.emit('telemetry', telemetry_event)
+            await sio.emit('telemetry', telemetry_event)
             
             await asyncio.sleep(3)
             
+        except asyncio.CancelledError:
+            break
         except Exception as e:
-            print(f"Demo telemetry error: {e}")
+            print(f"[Demo] Telemetry generation error: {e}")
             await asyncio.sleep(5)
 
 
