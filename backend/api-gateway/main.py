@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import socketio
+import aiohttp
 
 # IP Management imports
 from ip_manager import ip_manager, BlockReason, ThreatSeverity
@@ -16,6 +17,7 @@ from ip_middleware import setup_ip_middleware, process_event_queue, set_socket_i
 PORT = int(os.environ.get("PORT", 3001))
 INGEST_SERVICE_URL = os.environ.get("INGEST_SERVICE_URL", "http://127.0.0.1:8001")
 RESPONSE_ENGINE_URL = os.environ.get("RESPONSE_ENGINE_URL", "http://127.0.0.1:8004")
+MODEL_SERVICE_URL = os.environ.get("MODEL_SERVICE_URL", "http://127.0.0.1:5000")
 
 class TelemetryEvent(BaseModel):
     event_id: str
@@ -685,6 +687,69 @@ async def proxy_defense_actions(limit: int = 50):
                 raise HTTPException(status_code=resp.status, detail="Response Engine Error")
     except aiohttp.ClientError:
         raise HTTPException(status_code=503, detail="Response Engine Unavailable")
+
+
+# ============ Model Service Proxy Routes ============
+@app.post("/api/analyze", tags=["Model Service Proxy"])
+async def proxy_analyze(request: Request):
+    """Proxy analyze requests to the Model Microservice."""
+    try:
+        body = await request.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{MODEL_SERVICE_URL}/api/analyze", json=body) as resp:
+                result = await resp.json()
+                return result
+    except aiohttp.ClientError:
+        raise HTTPException(status_code=503, detail="Model Service Unavailable")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/dashboard", tags=["Model Service Proxy"])
+async def proxy_dashboard():
+    """Proxy dashboard requests to the Model Microservice."""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{MODEL_SERVICE_URL}/api/dashboard") as resp:
+                if resp.status == 200:
+                    return await resp.json()
+                raise HTTPException(status_code=resp.status, detail="Model Service Error")
+    except aiohttp.ClientError:
+        raise HTTPException(status_code=503, detail="Model Service Unavailable")
+
+
+# ============================================================
+# TELEMETRY AND SUMMARY ENDPOINTS FOR FRONTEND
+# ============================================================
+
+@app.get("/telemetry/summary", tags=["Telemetry"])
+async def get_telemetry_summary():
+    """Get telemetry summary for dashboard."""
+    return {
+        "connected_clients": len(connected_clients),
+        "blocked_ips": len(ip_manager.blocked_ips),
+        "active_threats": 0,
+        "events_processed": 0,
+        "system_health": "healthy",
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
+@app.get("/api/telemetry/summary", tags=["Telemetry"])
+async def get_api_telemetry_summary():
+    """Proxy telemetry summary through /api path."""
+    return await get_telemetry_summary()
+
+@app.get("/system/health", tags=["System"])
+async def get_system_health():
+    """Get system health status."""
+    return {
+        "services": {
+            "api_gateway": "healthy",
+            "connected_clients": len(connected_clients),
+            "blocked_ips": len(ip_manager.blocked_ips)
+        },
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
 
 
 if __name__ == "__main__":

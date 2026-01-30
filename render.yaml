@@ -1,0 +1,148 @@
+# Render Blueprint - Server Guard Deployment
+# https://render.com/docs/blueprint-spec
+
+services:
+  # ============================================
+  # FRONTEND - React Static Site
+  # ============================================
+  - type: web
+    name: server-guard-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: server-guard-api-gateway
+          property: host
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://server-guard-api-gateway.onrender.com/api/*
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+
+  # ============================================
+  # API GATEWAY - Main Backend Entry Point
+  # ============================================
+  - type: web
+    name: server-guard-api-gateway
+    runtime: python
+    buildCommand: cd backend/api-gateway && pip install -r requirements.txt
+    startCommand: cd backend/api-gateway && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: DETECTION_ENGINE_URL
+        fromService:
+          type: web
+          name: server-guard-detection-engine
+          property: hostport
+      - key: INGEST_SERVICE_URL
+        fromService:
+          type: web
+          name: server-guard-ingest-service
+          property: hostport
+      - key: ALERT_MANAGER_URL
+        fromService:
+          type: web
+          name: server-guard-alert-manager
+          property: hostport
+      - key: RESPONSE_ENGINE_URL
+        fromService:
+          type: web
+          name: server-guard-response-engine
+          property: hostport
+      - key: MODEL_SERVICE_URL
+        fromService:
+          type: web
+          name: server-guard-model-service
+          property: hostport
+    healthCheckPath: /health
+
+  # ============================================
+  # DETECTION ENGINE
+  # ============================================
+  - type: web
+    name: server-guard-detection-engine
+    runtime: python
+    buildCommand: cd backend/detection-engine && pip install -r requirements.txt
+    startCommand: cd backend/detection-engine && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+    healthCheckPath: /health
+
+  # ============================================
+  # INGEST SERVICE
+  # ============================================
+  - type: web
+    name: server-guard-ingest-service
+    runtime: python
+    buildCommand: cd backend/ingest-service && pip install -r requirements.txt
+    startCommand: cd backend/ingest-service && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+    disk:
+      name: ingest-data
+      mountPath: /app/data
+      sizeGB: 1
+    healthCheckPath: /health
+
+  # ============================================
+  # ALERT MANAGER
+  # ============================================
+  - type: web
+    name: server-guard-alert-manager
+    runtime: python
+    buildCommand: cd backend/alert-manager && pip install -r requirements.txt
+    startCommand: cd backend/alert-manager && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+    healthCheckPath: /health
+
+  # ============================================
+  # RESPONSE ENGINE (SOAR)
+  # ============================================
+  - type: web
+    name: server-guard-response-engine
+    runtime: python
+    buildCommand: cd backend/response-engine && pip install -r requirements.txt
+    startCommand: cd backend/response-engine && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+    healthCheckPath: /health
+
+  # ============================================
+  # ML MODEL SERVICE (Flask)
+  # ============================================
+  - type: web
+    name: server-guard-model-service
+    runtime: python
+    buildCommand: cd model_microservice && pip install -r requirements.txt
+    startCommand: cd model_microservice && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: ALERT_MANAGER_URL
+        fromService:
+          type: web
+          name: server-guard-alert-manager
+          property: hostport
+      - key: API_GATEWAY_URL
+        fromService:
+          type: web
+          name: server-guard-api-gateway
+          property: hostport
+      - key: RESPONSE_ENGINE_URL
+        fromService:
+          type: web
+          name: server-guard-response-engine
+          property: hostport
+    healthCheckPath: /health

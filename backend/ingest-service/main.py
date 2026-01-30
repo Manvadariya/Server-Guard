@@ -94,6 +94,22 @@ async def forward_to_detection(event_dict: dict):
         # We just log connection errors, we don't crash the ingest
         print(f"[WARN] Could not reach Detection Engine: {e}")
 
+async def forward_to_api_gateway(event_dict: dict):
+    """Forward telemetry event to API Gateway for frontend broadcast"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{API_GATEWAY_URL}/internal/telemetry",
+                json=event_dict,
+                timeout=aiohttp.ClientTimeout(total=3)
+            ) as resp:
+                if resp.status == 200:
+                    print(f"[INFO] Event forwarded to API Gateway")
+                else:
+                    print(f"[WARN] API Gateway returned status {resp.status}")
+    except Exception as e:
+        print(f"[WARN] Could not reach API Gateway: {e}")
+
 # ==========================================
 # 3. CORE INGESTION API
 # ==========================================
@@ -123,8 +139,8 @@ async def ingest_event(event_input: TelemetryEventInput, background_tasks: Backg
         if not stored:
             print("[ERROR] Failed to write to local storage")
 
-        # 4. Emit to Dashboard (Real-time)
-        await sio.emit('telemetry', event_dict)
+        # 4. Forward to API Gateway for frontend display (Background Task)
+        background_tasks.add_task(forward_to_api_gateway, event_dict)
 
         # 5. Forward to AI Engine (Background Task)
         # We use BackgroundTasks so the API returns immediately to the client

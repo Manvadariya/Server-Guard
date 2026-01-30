@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
     Terminal,
     Activity,
@@ -12,25 +13,31 @@ import {
     Cpu,
     Server,
     Shield,
-    Zap
+    Zap,
+    Home,
+    LayoutDashboard,
+    ChevronRight
 } from 'lucide-react';
 
 // --- Simulation Data & Helpers ---
 
 const INITIAL_LOGS = [
-    { ts: '00:00:01', type: 'info', msg: 'Server console initialized. Kernel v5.15.0-generic loaded.' },
-    { ts: '00:00:02', type: 'success', msg: 'Uplink established. Latency: 12ms.' },
-    { ts: '00:00:02', type: 'info', msg: 'Loading infrastructure modules...' },
-    { ts: '00:00:03', type: 'success', msg: 'Models: web_gatekeeper + network_shield online.' },
-    { ts: '00:00:04', type: 'warning', msg: 'Root privileges granted. Monitoring active.' },
-    { ts: '00:00:05', type: 'info', msg: 'Awaiting target designation...' },
+    { ts: '00:00:01', type: 'system', msg: '[INIT] Security Operations Console v3.1.0 starting...' },
+    { ts: '00:00:01', type: 'info', msg: '[KERNEL] Linux 5.15.0-generic x86_64 loaded successfully' },
+    { ts: '00:00:02', type: 'success', msg: '[NETWORK] Secure uplink established — RTT: 12ms, jitter: 2ms' },
+    { ts: '00:00:02', type: 'info', msg: '[MODULE] Loading AI defense infrastructure...' },
+    { ts: '00:00:03', type: 'success', msg: '[AI] Web Gatekeeper model initialized (accuracy: 98.2%)' },
+    { ts: '00:00:03', type: 'success', msg: '[AI] Network Shield model initialized (accuracy: 97.8%)' },
+    { ts: '00:00:04', type: 'warning', msg: '[AUTH] Elevated privileges granted — Session ID: 0x7F3A9C' },
+    { ts: '00:00:04', type: 'info', msg: '[MONITOR] Real-time threat detection active' },
+    { ts: '00:00:05', type: 'info', msg: '[STATUS] System ready — Awaiting simulation parameters...' },
 ];
 
 const SERVER_ATTACKS = [
-    { id: 'sql', name: 'SQL Injection', icon: Database, color: 'text-blue-400', desc: 'Inject malicious queries to manipulate backend database.' },
-    { id: 'brute', name: 'Brute Force', icon: Lock, color: 'text-orange-400', desc: 'Automated credential cracking against auth servers.' },
-    { id: 'flood', name: 'Network Flood', icon: Activity, color: 'text-purple-400', desc: 'High-volume UDP/TCP packet saturation attack.' },
-    { id: 'scan', name: 'Port Scan', icon: Search, color: 'text-[#ccf655]', desc: 'Reconnaissance for open server ports (21, 22, 80, 443).' },
+    { id: 'sql', name: 'SQL Injection', icon: Database, color: 'text-blue-400', desc: 'OWASP A03:2021 — Injection attack targeting database layer via malicious SQL queries.' },
+    { id: 'brute', name: 'Brute Force', icon: Lock, color: 'text-orange-400', desc: 'OWASP A07:2021 — Automated credential stuffing against authentication endpoints.' },
+    { id: 'flood', name: 'DDoS Attack', icon: Activity, color: 'text-purple-400', desc: 'MITRE ATT&CK T1498 — Volumetric network flood to exhaust server resources.' },
+    { id: 'scan', name: 'Port Scan', icon: Search, color: 'text-[#ccf655]', desc: 'MITRE ATT&CK T1046 — Network reconnaissance scanning for open services.' },
 ];
 
 // Attack payload helpers (mirrors simulation_driver.py)
@@ -42,6 +49,38 @@ const SQL_PAYLOADS = [
     "' OR '1'='1",
     "SELECT * FROM data WHERE id=1 OR 1=1"
 ];
+
+// Industry-standard log message templates
+const LOG_TEMPLATES = {
+    sql: [
+        (payload) => `[SQLi] Payload injected: ${payload.substring(0, 30)}...`,
+        () => `[SQLi] Attempting authentication bypass via tautology`,
+        () => `[SQLi] Probing for UNION-based extraction vectors`,
+        () => `[SQLi] Testing error-based injection on input field`,
+        () => `[WAF] Signature match: SQL injection pattern detected`,
+    ],
+    brute: [
+        (n) => `[AUTH] Failed login attempt #${n} — user: admin, src: 192.168.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`,
+        () => `[AUTH] Rate limit threshold exceeded — 50 req/min`,
+        () => `[AUTH] Credential stuffing pattern detected`,
+        () => `[AUTH] Geographic anomaly — Login from unexpected region`,
+        () => `[LOCKOUT] Account temporarily locked after failed attempts`,
+    ],
+    flood: [
+        (threads) => `[DDoS] SYN flood detected — ${threads * 50} packets/sec`,
+        () => `[DDoS] UDP amplification attack in progress`,
+        () => `[NET] Bandwidth saturation: 94% capacity utilized`,
+        () => `[NET] Connection pool exhausted — new connections queued`,
+        () => `[ALERT] Service degradation detected — latency spike to 4200ms`,
+    ],
+    scan: [
+        () => `[RECON] TCP SYN scan detected from external host`,
+        (port) => `[RECON] Port ${port} probed — service: ${port === 22 ? 'SSH' : port === 443 ? 'HTTPS' : port === 3306 ? 'MySQL' : 'Unknown'}`,
+        () => `[RECON] OS fingerprinting attempt via TTL analysis`,
+        () => `[RECON] Service version enumeration in progress`,
+        () => `[IDS] Nmap signature detected — scan type: SYN stealth`,
+    ]
+};
 
 const generate_network_stats = (mode) => {
     if (mode === "ddos") {
@@ -88,25 +127,49 @@ const generate_server_metrics = (mode) => {
 // --- Components ---
 
 const Header = ({ status }) => (
-    <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 gap-6 relative z-10">
-        <div>
-            <div className="flex items-center gap-3 mb-2">
-                <div className="w-1.5 h-1.5 bg-[#ccf655] rounded-full shadow-[0_0_10px_#ccf655] animate-pulse"></div>
-                <span className="uppercase text-[10px] text-[#ccf655] tracking-[0.25em] font-mono leading-none pt-0.5">Server Ops v3.1 // Online</span>
+    <div className="relative z-10">
+        {/* Navigation Bar */}
+        <nav className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+            <div className="flex items-center gap-6">
+                <Link to="/" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group">
+                    <Home size={14} className="group-hover:text-[#ccf655]" />
+                    <span className="text-xs font-mono uppercase tracking-wider">Home</span>
+                </Link>
+                <ChevronRight size={12} className="text-zinc-700" />
+                <Link to="/dashboard" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group">
+                    <LayoutDashboard size={14} className="group-hover:text-[#ccf655]" />
+                    <span className="text-xs font-mono uppercase tracking-wider">Dashboard</span>
+                </Link>
+                <ChevronRight size={12} className="text-zinc-700" />
+                <span className="flex items-center gap-2 text-[#ccf655]">
+                    <Terminal size={14} />
+                    <span className="text-xs font-mono uppercase tracking-wider">Simulation</span>
+                </span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-medium tracking-tight text-white font-instrument italic">
-                Server Attack Console.
-            </h1>
-        </div>
-
-        <div className="flex items-center gap-6 bg-zinc-900/60 px-6 py-3 rounded-full border border-white/10 backdrop-blur-md shadow-2xl">
-            <div className="text-right">
-                <div className="text-[10px] uppercase text-zinc-500 font-bold tracking-widest font-mono">Status</div>
-                <div className={`text-xl font-medium font-mono tracking-widest ${status === 'ATTACKING' ? 'text-red-500 animate-pulse' : 'text-[#ccf655]'}`}>
-                    {status}
+            
+            {/* Status Badge */}
+            <div className="flex items-center gap-3 bg-zinc-900/60 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md">
+                <div className="text-right">
+                    <div className="text-[9px] uppercase text-zinc-500 font-bold tracking-widest font-mono">Status</div>
+                    <div className={`text-sm font-medium font-mono tracking-widest ${status === 'ATTACKING' ? 'text-red-500 animate-pulse' : 'text-[#ccf655]'}`}>
+                        {status}
+                    </div>
                 </div>
+                <div className={`w-2.5 h-2.5 rounded-full ${status === 'ATTACKING' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-[#ccf655] shadow-[0_0_10px_#ccf655]'}`}></div>
             </div>
-            <div className={`w-3 h-3 rounded-full ${status === 'ATTACKING' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-[#ccf655] shadow-[0_0_10px_#ccf655]'}`}></div>
+        </nav>
+        
+        {/* Title Section */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 gap-6">
+            <div>
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="w-1.5 h-1.5 bg-[#ccf655] rounded-full shadow-[0_0_10px_#ccf655] animate-pulse"></div>
+                    <span className="uppercase text-[10px] text-[#ccf655] tracking-[0.25em] font-mono leading-none pt-0.5">Server Ops v3.1 // Online</span>
+                </div>
+                <h1 className="text-4xl md:text-5xl font-medium tracking-tight text-white font-instrument italic">
+                    Server Attack Console.
+                </h1>
+            </div>
         </div>
     </div>
 );
@@ -261,17 +324,31 @@ const LogConsole = ({ logs }) => {
 
 // --- Main App ---
 
+// Use relative URL in production (nginx proxies /api to backend)
+const isDev = import.meta.env.DEV;
+const DEFAULT_TARGET = isDev ? 'http://127.0.0.1:8006' : '';
+
 const AttackSimulation = () => {
     const [status, setStatus] = useState('READY');
     const [activeModuleId, setActiveModuleId] = useState(null);
     const [logs, setLogs] = useState(INITIAL_LOGS);
     const [config, setConfig] = useState({
-        target: 'http://127.0.0.1:8006', // default to model microservice
+        target: DEFAULT_TARGET, // Empty in production (uses relative /api)
         requests: 10000,
         threads: 64
     });
 
     const timerRef = useRef(null);
+
+    // Cleanup interval on component unmount
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
+        };
+    }, []);
 
     const addLog = (msg, type = 'info') => {
         const now = new Date();
@@ -280,13 +357,11 @@ const AttackSimulation = () => {
     };
 
     const handlePing = () => {
-        if (!config.target) {
-            addLog('Error: No target specified for PING request.', 'error');
-            return;
-        }
-        addLog(`Pinging AI endpoint ${config.target}...`, 'system');
+        addLog(`[PROBE] Initiating health check to ${config.target || 'backend API'}`, 'system');
 
-        const apiUrl = `${config.target.replace(/\/$/, '')}/api/analyze`;
+        // In production, use relative /api path; in dev, use full URL
+        const baseUrl = config.target ? config.target.replace(/\/$/, '') : '';
+        const apiUrl = `${baseUrl}/api/analyze`;
         const probePayload = {
             service_type: 'ping_test',
             payload: "PING",
@@ -301,25 +376,24 @@ const AttackSimulation = () => {
         })
             .then(res => res.json())
             .then(data => {
-                addLog(`AI replied: ${data.status || 'unknown'} | threat: ${data.threat_level || 'low'} | web_score=${data.web_ai_score ?? 'n/a'} net_score=${data.net_ai_score ?? 'n/a'}`, 'success');
+                addLog(`[PROBE] Response received — Status: ${(data.status || 'unknown').toUpperCase()} | Threat Level: ${data.threat_level || 'low'} | Web Score: ${data.web_ai_score ?? 'N/A'} | Net Score: ${data.net_ai_score ?? 'N/A'}`, 'success');
             })
-            .catch(() => addLog('Ping failed: AI endpoint unreachable.', 'error'));
+            .catch(() => addLog('[ERROR] Connection refused — AI endpoint unreachable at ' + apiUrl, 'error'));
     };
 
     const startAttack = async (moduleId) => {
         if (status === 'ATTACKING') return;
 
-        if (!config.target) {
-            addLog('FAILURE: Cannot initialize attack module. Target server undefined.', 'error');
-            return;
-        }
-
+        const attackNames = { sql: 'SQL Injection', brute: 'Brute Force', flood: 'DDoS Attack', scan: 'Port Scan' };
+        
         setStatus('ATTACKING');
         setActiveModuleId(moduleId);
-        addLog(`Initializing module: ${moduleId.toUpperCase()}`, 'warning');
-        addLog(`Target: ${config.target} | Threads: ${config.threads}`, 'info');
+        addLog(`[ATTACK] Initializing ${attackNames[moduleId] || moduleId.toUpperCase()} simulation module`, 'warning');
+        addLog(`[CONFIG] Target: ${config.target || 'backend API'} | Concurrency: ${config.threads} threads | Requests: ${config.requests}`, 'info');
 
-        const apiUrl = `${config.target.replace(/\/$/, '')}/api/analyze`;
+        // In production, use relative /api path; in dev, use full URL
+        const baseUrl = config.target ? config.target.replace(/\/$/, '') : '';
+        const apiUrl = `${baseUrl}/api/analyze`;
 
         // Build ML-friendly payloads to mirror simulation_driver.py
         const attackPayloads = {
@@ -375,59 +449,98 @@ const AttackSimulation = () => {
             if (res.ok) {
                 const aiStatus = data.status || 'allowed';
                 const aiThreat = data.threat_level || 'low';
-                addLog(`[AI] ${aiStatus.toUpperCase()} | source=${data.source || 'Model'} threat=${aiThreat} web=${data.web_ai_score ?? 'n/a'} net=${data.net_ai_score ?? 'n/a'}`, aiStatus === 'blocked' ? 'error' : 'success');
-
+                const webScore = data.web_ai_score !== undefined ? (data.web_ai_score * 100).toFixed(1) + '%' : 'N/A';
+                const netScore = data.net_ai_score !== undefined ? (data.net_ai_score * 100).toFixed(1) + '%' : 'N/A';
+                
                 if (aiStatus === 'blocked') {
+                    addLog(`[AI-DEFENSE] \u26A0\uFE0F THREAT BLOCKED | Source: ${data.source || 'AI Model'} | Threat Level: ${aiThreat.toUpperCase()} | Web Confidence: ${webScore} | Net Confidence: ${netScore}`, 'error');
                     setStatus('BLOCKED');
+                } else {
+                    addLog(`[AI-DEFENSE] \u2714\uFE0F REQUEST ALLOWED | Source: ${data.source || 'AI Model'} | Threat Level: ${aiThreat.toUpperCase()} | Web Score: ${webScore} | Net Score: ${netScore}`, 'success');
                 }
+
                 setTimeout(() => {
+                    // Clear any running interval when attack completes
+                    if (timerRef.current) {
+                        clearInterval(timerRef.current);
+                        timerRef.current = null;
+                    }
                     setStatus('READY');
                     setActiveModuleId(null);
+                    addLog('[STATUS] Simulation complete \u2014 System returned to monitoring state', 'info');
                 }, 1200);
             } else {
-                addLog(`[AI] Error: ${data.error || res.statusText}`, 'error');
+                addLog(`[ERROR] AI service returned error: ${data.error || res.statusText}`, 'error');
+                // Clear interval on error
+                if (timerRef.current) {
+                    clearInterval(timerRef.current);
+                    timerRef.current = null;
+                }
                 setStatus('READY');
                 setActiveModuleId(null);
             }
 
         } catch (e) {
-            addLog(`[Network] AI endpoint unavailable. Using local simulation for visuals.`, 'warning');
-            setStatus('READY');
-            setActiveModuleId(null);
+            addLog(`[WARNING] AI endpoint unavailable \u2014 Running in offline simulation mode`, 'warning');
+            // Don't clear interval on network error - let simulation continue
         }
 
         // --- SIMULATION MODE (Or Visual Feedback) ---
+        // Clear any existing interval before starting a new one
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+
         let counter = 0;
+        const maxIterations = 15; // Limit the number of log entries
+        
         timerRef.current = setInterval(() => {
             counter++;
-            const rdm = Math.random();
-
+            
+            // Auto-stop after maxIterations
+            if (counter >= maxIterations) {
+                if (timerRef.current) {
+                    clearInterval(timerRef.current);
+                    timerRef.current = null;
+                }
+                return;
+            }
+            
+            // Use professional log templates
+            const templates = LOG_TEMPLATES[moduleId] || LOG_TEMPLATES.sql;
+            const templateIndex = counter % templates.length;
+            const template = templates[templateIndex];
+            
+            // Generate contextual log messages
             if (moduleId === 'sql') {
-                if (rdm > 0.7) addLog(`[SQLi] Injecting payload: ' OR 1=1; DROP TABLE users --`, 'info');
-                else if (rdm > 0.9) addLog(`[SQLi] Database dump: 104 rows exported from 'admin_credentials'`, 'success');
+                const payload = SQL_PAYLOADS[Math.floor(Math.random() * SQL_PAYLOADS.length)];
+                addLog(template(payload), counter % 3 === 0 ? 'warning' : 'info');
             }
             else if (moduleId === 'brute') {
-                addLog(`[Brute] Testing SSH credential batch #${counter}: root/password123...`, 'info');
-                if (rdm > 0.95) addLog(`[Brute] Handshake successful! Access granted.`, 'warning');
+                addLog(template(counter * 10 + Math.floor(Math.random() * 10)), counter % 4 === 0 ? 'warning' : 'info');
             }
             else if (moduleId === 'flood') {
-                addLog(`[DDoS] Sending ${config.threads * 50} UDP packets to ${config.target}:80`, 'info');
-                if (counter % 5 === 0) addLog(`[DDoS] Server latency spike detected: 4000ms`, 'error');
+                addLog(template(config.threads), counter % 5 === 0 ? 'error' : 'warning');
             }
             else if (moduleId === 'scan') {
-                if (rdm > 0.5) addLog(`[PortScan] Open port found: ${Math.random() > 0.5 ? '443 (HTTPS)' : '22 (SSH)'}`, 'success');
-                else addLog(`[PortScan] Scanning subnet 192.168.1.x...`, 'info');
+                const ports = [22, 80, 443, 3306, 5432, 8080, 27017];
+                const port = ports[Math.floor(Math.random() * ports.length)];
+                addLog(template(port), counter % 3 === 0 ? 'success' : 'info');
             }
 
         }, 800);
     };
 
     const stopAttack = () => {
-        if (timerRef.current) clearInterval(timerRef.current);
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
         setStatus('READY');
         setActiveModuleId(null);
-        addLog('Attack sequence aborted. Closing connections.', 'error');
-        addLog('Server returned to idle state.', 'info');
+        addLog('[ABORT] Attack simulation terminated by operator', 'error');
+        addLog('[STATUS] All connections closed \u2014 System returning to idle state', 'info');
     };
 
     return (

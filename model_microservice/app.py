@@ -467,5 +467,6 @@ def analyze_packet():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    print("[*] Server Guard AI running on port 8006")
-    app.run(debug=False, port=8006, host='0.0.0.0')
+    port = int(os.environ.get("PORT", 5000))
+    print(f"[*] Server Guard AI running on port {port}")
+    app.run(debug=False, port=port, host='0.0.0.0')

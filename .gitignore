@@ -132,3 +132,11 @@ dmypy.json
 .idea/
 *.swp
 .DS_Store
+# Deployment
+deploy/
+demo_simulation.py
+deploy_docker.bat
+demo_simulation.py
+run_simulation.bat
+server-guard-deploy.tar
+server-guard.tar

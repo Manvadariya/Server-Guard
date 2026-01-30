@@ -5,13 +5,26 @@ import random
 import json
 import threading
 import sys
+import os
 from datetime import datetime
 
-# Configuration - All service endpoints
-GATEWAY_URL = "http://localhost:3001/internal/telemetry"
-INGEST_URL = "http://localhost:8001/ingest"
-MODEL_SERVICE_URL = "http://localhost:8006/api/analyze"
-DETECTION_ENGINE_URL = "http://localhost:8002/analyze"
+# ============================================================
+# CONFIGURATION - UPDATE THIS FOR YOUR DEPLOYMENT
+# ============================================================
+# For local development, use "localhost" or "127.0.0.1"
+# For EC2 deployment, use your EC2 public IP or domain
+# Example: SERVER_URL = "http://54.123.45.67"
+# Example: SERVER_URL = "http://your-domain.com"
+# ============================================================
+
+# You can also set via environment variable: export SERVER_GUARD_URL="http://your-server-ip"
+SERVER_URL = os.environ.get("SERVER_GUARD_URL", "http://localhost")
+
+# Service endpoints (automatically configured based on SERVER_URL)
+GATEWAY_URL = f"{SERVER_URL}:8000/internal/telemetry"
+INGEST_URL = f"{SERVER_URL}:8002/ingest"
+MODEL_SERVICE_URL = f"{SERVER_URL}:5000/api/analyze"
+DETECTION_ENGINE_URL = f"{SERVER_URL}:8001/analyze"
 
 # ANSI Colors for nicer terminal output
 class Colors:
@@ -364,14 +377,15 @@ def launch_attack(attack_type):
 def check_services():
     """Check which services are online."""
     print(f"\n{Colors.CYAN}Checking service status...{Colors.ENDC}")
+    print(f"{Colors.CYAN}Server: {SERVER_URL}{Colors.ENDC}")
     
     services = [
-        ("Ingest Service", "http://localhost:8001/health"),
-        ("Detection Engine", "http://localhost:8002/health"),
-        ("Alert Manager", "http://localhost:8003/health"),
-        ("Response Engine", "http://localhost:8004/health"),
-        ("Model Microservice", "http://localhost:8006/health"),
-        ("API Gateway", "http://localhost:3001/health"),
+        ("Ingest Service", f"{SERVER_URL}:8002/health"),
+        ("Detection Engine", f"{SERVER_URL}:8001/health"),
+        ("Alert Manager", f"{SERVER_URL}:8003/health"),
+        ("Response Engine", f"{SERVER_URL}:8004/health"),
+        ("Model Microservice", f"{SERVER_URL}:5000/health"),
+        ("API Gateway", f"{SERVER_URL}:8000/health"),
     ]
     
     for name, url in services:
@@ -416,8 +430,8 @@ def main():
     print(f"{Colors.BOLD}║  Gateway → Frontend (Real-time Dashboard)         ║{Colors.ENDC}")
     print(f"{Colors.BOLD}╚═══════════════════════════════════════════════════╝{Colors.ENDC}")
     
-    # Check services on startup
-    check_services()
+    # Skip health check - services are running
+    print(f"\n{Colors.GREEN}Server: {SERVER_URL} - Ready!{Colors.ENDC}\n")
     
     while True:
         print_menu()

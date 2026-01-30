@@ -4,7 +4,10 @@ import NodeSidebar from '../components/dashboard/NodeSidebar';
 import TelemetryPanel from '../components/dashboard/TelemetryPanel';
 import AlertsSidebar from '../components/dashboard/AlertsSidebar';
 
-const API_URL = 'http://127.0.0.1:8006'; // model microservice
+// Use relative URL in production (nginx proxies /api to backend)
+// In development, use localhost
+const isDev = import.meta.env.DEV;
+const API_URL = isDev ? 'http://127.0.0.1:8006' : '/api';
 
 const Dashboard = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -23,16 +26,53 @@ const Dashboard = () => {
                 const data = await res.json();
                 setLastPollError(null);
 
-                const normalizedLogs = (data.logs || []).map(l => ({
-                    id: l.id || Date.now() + Math.random(),
-                    msg: `${l.service || 'unknown'} | ${l.message || l.status || 'event'}`,
-                    ts: l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
-                    status: l.status,
-                    score: l.score,
-                    threat: l.threat_level,
-                    source: l.source || 'System',
-                    is_ai_gen: l.is_ai_gen || false
-                })).slice(-50);
+                // Format service names for better readability
+                const formatService = (service) => {
+                    const serviceMap = {
+                        'web_frontend': 'Web Frontend',
+                        'auth_service': 'Auth Service',
+                        'api_gateway': 'API Gateway',
+                        'network_scanner': 'Network Scanner',
+                        'ping_test': 'Health Check',
+                        'unknown': 'System'
+                    };
+                    return serviceMap[service] || service;
+                };
+
+                // Format attack types for display
+                const formatAttack = (attack) => {
+                    const attackMap = {
+                        'sql_injection': 'SQL Injection detected',
+                        'brute_force': 'Brute force attempt',
+                        'ddos': 'DDoS attack detected',
+                        'port_scan': 'Port scan detected',
+                        'xss': 'XSS attempt detected'
+                    };
+                    return attackMap[attack] || attack || 'Request processed';
+                };
+
+                const normalizedLogs = (data.logs || []).map(l => {
+                    const service = formatService(l.service || 'unknown');
+                    const attackType = l.attack_type ? formatAttack(l.attack_type) : '';
+                    const statusText = l.status === 'blocked' ? '⛔ Blocked' : l.status === 'warning' ? '⚠️ Warning' : '✅ Allowed';
+                    
+                    // Build professional message
+                    let message = attackType || l.message || statusText;
+                    if (l.threat_level && l.threat_level !== 'low') {
+                        message += ` — Threat: ${l.threat_level.toUpperCase()}`;
+                    }
+                    
+                    return {
+                        id: l.id || Date.now() + Math.random(),
+                        msg: message,
+                        ts: l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
+                        status: l.status,
+                        score: l.score,
+                        threat: l.threat_level,
+                        source: service,
+                        is_ai_gen: l.is_ai_gen || false
+                    };
+                }).slice(-50);
 
                 setLogs(normalizedLogs);
 
@@ -42,7 +82,7 @@ const Dashboard = () => {
                     .map(l => ({
                         id: l.id,
                         type: l.status === 'blocked' ? 'critical' : 'warning',
-                        source: l.source || 'AI',
+                        source: l.source || 'AI Defense',
                         msg: l.msg,
                         conf: Math.round((l.score || 0) * 100),
                         time: l.ts,
@@ -99,7 +139,7 @@ const Dashboard = () => {
     const currentMetrics = telemetryHistory[telemetryHistory.length - 1] || { cpu: 0, memory: 0, net: 0 };
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white font-inter selection:bg-[#ccf655] selection:text-black overflow-x-hidden relative">
+        <div className="h-screen bg-[#050505] text-white font-inter selection:bg-[#ccf655] selection:text-black overflow-hidden relative flex flex-col">
             <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Instrument+Serif:ital,wght@0,400;1,400&family=Space+Grotesk:wght@300;400;500;600&display=swap');
         
@@ -136,12 +176,12 @@ const Dashboard = () => {
             </div>
 
             {/* --- Main Content --- */}
-            <div className="flex flex-col min-h-screen max-w-[1800px] mx-auto p-4 md:p-6 relative z-10 gap-6">
+            <div className="flex flex-col flex-1 max-w-[1800px] w-full mx-auto p-4 md:p-6 relative z-10 gap-4 overflow-hidden">
 
                 <DashboardHeader stats={stats} currentTime={currentTime} />
 
                 {/* Dashboard Grid */}
-                <main className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-8">
+                <main className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 overflow-hidden">
 
                     <NodeSidebar
                         nodes={nodes}

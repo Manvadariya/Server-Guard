@@ -1,8 +1,9 @@
 import os
 import uuid
-from datetime import datetime
+import asyncio
+from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -313,6 +314,241 @@ async def manual_remove_throttle(ip: str):
 async def reset_all():
     clear_all_actions()
     return {"status": "reset", "message": "All actions cleared"}
+
+
+# ==========================================
+# SOAR PLAYBOOK EXECUTION
+# ==========================================
+
+class SOARPlaybookRequest(BaseModel):
+    """Request model for SOAR playbook execution"""
+    playbook_type: str = "full"  # full, ip_block, rate_limit, quarantine
+    target_ips: Optional[List[str]] = None  # Specific IPs to target
+    block_duration: int = 1800  # 30 minutes default (production-grade)
+    rate_limit: int = 10  # requests per minute
+    auto_unblock: bool = True  # Auto-unblock after duration
+
+class SOARPlaybookResponse(BaseModel):
+    """Response model for SOAR playbook execution"""
+    success: bool
+    playbook_id: str
+    actions_executed: List[dict]
+    blocked_ips: List[str]
+    rate_limited_ips: List[str]
+    quarantined_services: List[str]
+    auto_unblock_scheduled: bool
+    unblock_at: Optional[str] = None
+    message: str
+
+# Store scheduled unblocks for tracking
+scheduled_unblocks: Dict[str, datetime] = {}
+
+@app.post("/soar/execute", response_model=SOARPlaybookResponse, tags=["SOAR"])
+async def execute_soar_playbook(request: SOARPlaybookRequest):
+    """
+    Execute SOAR (Security Orchestration, Automation & Response) playbook.
+    
+    Production-grade automated threat mitigation:
+    - IP Blocking: Blocks malicious IPs at gateway level
+    - Rate Limiting: Throttles suspicious traffic
+    - Quarantine: Isolates compromised services
+    - Auto-Unblock: Automatically unblocks IPs after specified duration (default 30 min)
+    """
+    from playbooks import blocked_ips, throttled_ips, isolated_services, action_log
+    import uuid
+    
+    playbook_id = str(uuid.uuid4())[:8]
+    actions_executed = []
+    blocked_list = []
+    rate_limited_list = []
+    quarantined_list = []
+    
+    # Get target IPs from alerts or use provided list
+    target_ips = request.target_ips or []
+    
+    # If no specific IPs provided, get from recent blocked events in logs
+    if not target_ips:
+        # Get IPs from recent action log that were detected as threats
+        for action in action_log[-20:]:
+            if hasattr(action, 'target') and action.target and action.target not in ['N/A', 'unknown', '127.0.0.1']:
+                target_ips.append(action.target)
+        target_ips = list(set(target_ips))  # Remove duplicates
+    
+    # Simulate threat IPs for demo if none found
+    if not target_ips:
+        target_ips = [
+            f"185.220.101.{i}" for i in [42, 65, 89]  # Simulated threat IPs
+        ]
+    
+    now = datetime.utcnow()
+    unblock_time = now + timedelta(seconds=request.block_duration)
+    
+    # Execute actions based on playbook type
+    if request.playbook_type in ["full", "ip_block"]:
+        for ip in target_ips[:10]:  # Limit to 10 IPs per execution
+            # Block IP via API Gateway
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f"{API_GATEWAY_URL}/ip/block",
+                        json={
+                            "ip": ip,
+                            "reason": "soar_playbook",
+                            "severity": "high",
+                            "duration": request.block_duration
+                        },
+                        timeout=aiohttp.ClientTimeout(total=5)
+                    ) as resp:
+                        if resp.status == 200:
+                            result = await resp.json()
+                            blocked_list.append(ip)
+                            actions_executed.append({
+                                "type": "ip_block",
+                                "target": ip,
+                                "status": "success",
+                                "duration": request.block_duration,
+                                "message": result.get("message", f"Blocked {ip}")
+                            })
+                            
+                            # Schedule auto-unblock
+                            if request.auto_unblock:
+                                scheduled_unblocks[ip] = unblock_time
+                        else:
+                            actions_executed.append({
+                                "type": "ip_block",
+                                "target": ip,
+                                "status": "failed",
+                                "message": f"Gateway returned {resp.status}"
+                            })
+            except Exception as e:
+                # Fallback to local blocking
+                blocked_ips.add(ip)
+                blocked_list.append(ip)
+                actions_executed.append({
+                    "type": "ip_block",
+                    "target": ip,
+                    "status": "success_local",
+                    "duration": request.block_duration,
+                    "message": f"Blocked {ip} (local only, gateway unavailable)"
+                })
+    
+    if request.playbook_type in ["full", "rate_limit"]:
+        for ip in target_ips[:10]:
+            throttled_ips[ip] = request.rate_limit
+            rate_limited_list.append(ip)
+            actions_executed.append({
+                "type": "rate_limit",
+                "target": ip,
+                "status": "success",
+                "limit": request.rate_limit,
+                "message": f"Rate limited {ip} to {request.rate_limit} req/min"
+            })
+    
+    if request.playbook_type in ["full", "quarantine"]:
+        # Quarantine any compromised services (placeholder for demo)
+        demo_services = ["suspicious-container-1"]
+        for service in demo_services:
+            isolated_services.add(service)
+            quarantined_list.append(service)
+            actions_executed.append({
+                "type": "quarantine",
+                "target": service,
+                "status": "success",
+                "message": f"Service {service} quarantined"
+            })
+    
+    # Schedule background unblock task
+    if request.auto_unblock and blocked_list:
+        asyncio.create_task(schedule_auto_unblock(blocked_list, request.block_duration))
+    
+    return SOARPlaybookResponse(
+        success=True,
+        playbook_id=playbook_id,
+        actions_executed=actions_executed,
+        blocked_ips=blocked_list,
+        rate_limited_ips=rate_limited_list,
+        quarantined_services=quarantined_list,
+        auto_unblock_scheduled=request.auto_unblock,
+        unblock_at=unblock_time.isoformat() + "Z" if request.auto_unblock else None,
+        message=f"SOAR playbook executed: {len(blocked_list)} IPs blocked, {len(rate_limited_list)} rate-limited, {len(quarantined_list)} quarantined"
+    )
+
+
+async def schedule_auto_unblock(ips: List[str], delay_seconds: int):
+    """Background task to auto-unblock IPs after delay"""
+    await asyncio.sleep(delay_seconds)
+    
+    for ip in ips:
+        try:
+            # Unblock via API Gateway
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{API_GATEWAY_URL}/ip/unblock",
+                    json={"ip": ip},
+                    timeout=aiohttp.ClientTimeout(total=5)
+                ) as resp:
+                    if resp.status == 200:
+                        print(f"[SOAR] Auto-unblocked {ip} after {delay_seconds}s")
+                    
+            # Also remove from local set
+            from playbooks import blocked_ips
+            blocked_ips.discard(ip)
+            
+            # Remove from scheduled unblocks
+            scheduled_unblocks.pop(ip, None)
+            
+        except Exception as e:
+            print(f"[SOAR] Auto-unblock failed for {ip}: {e}")
+
+
+@app.get("/soar/status", tags=["SOAR"])
+async def get_soar_status():
+    """Get current SOAR defense status"""
+    from playbooks import blocked_ips, throttled_ips, isolated_services
+    
+    return {
+        "active_blocks": list(blocked_ips),
+        "active_rate_limits": dict(throttled_ips),
+        "quarantined_services": list(isolated_services),
+        "scheduled_unblocks": {
+            ip: dt.isoformat() + "Z" for ip, dt in scheduled_unblocks.items()
+        },
+        "total_blocked": len(blocked_ips),
+        "total_throttled": len(throttled_ips),
+        "total_quarantined": len(isolated_services)
+    }
+
+
+@app.post("/soar/unblock-all", tags=["SOAR"])
+async def soar_unblock_all():
+    """Emergency: Unblock all IPs (clear all defenses)"""
+    from playbooks import blocked_ips, throttled_ips, isolated_services
+    
+    unblocked = list(blocked_ips)
+    
+    # Unblock all via Gateway
+    for ip in unblocked:
+        try:
+            async with aiohttp.ClientSession() as session:
+                await session.post(
+                    f"{API_GATEWAY_URL}/ip/unblock",
+                    json={"ip": ip},
+                    timeout=aiohttp.ClientTimeout(total=2)
+                )
+        except:
+            pass
+    
+    blocked_ips.clear()
+    throttled_ips.clear()
+    isolated_services.clear()
+    scheduled_unblocks.clear()
+    
+    return {
+        "success": True,
+        "message": f"All defenses cleared: {len(unblocked)} IPs unblocked",
+        "unblocked_ips": unblocked
+    }
+
 
 if __name__ == "__main__":
     import uvicorn

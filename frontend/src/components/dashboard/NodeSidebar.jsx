@@ -3,8 +3,8 @@ import { Server, ShieldCheck } from 'lucide-react';
 
 const NodeSidebar = ({ nodes, selectedNode, onSelectNode }) => {
     return (
-        <aside className="lg:col-span-3 bg-zinc-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 flex flex-col gap-6 min-h-[600px]">
-            <div className="flex items-center justify-between pb-4 border-b border-white/5">
+        <aside className="lg:col-span-3 bg-zinc-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-5 flex flex-col gap-4 overflow-hidden">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5 shrink-0">
                 <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400 font-mono">Infrastructure</h3>
                 <span className="text-[10px] px-2 py-0.5 bg-white/5 rounded-md text-zinc-400 font-mono">{nodes.length} Active</span>
             </div>
@@ -37,11 +37,11 @@ const NodeSidebar = ({ nodes, selectedNode, onSelectNode }) => {
                 ))}
             </div>
 
-            <div className="pt-6 border-t border-white/5">
-                <div className="bg-black/30 rounded-xl p-4 border border-white/5">
+            <div className="pt-4 border-t border-white/5 shrink-0">
+                <div className="bg-black/30 rounded-xl p-3 border border-white/5">
                     <div className="flex justify-between items-end mb-2">
                         <span className="text-[10px] uppercase text-zinc-500 font-mono">System Health</span>
-                        <span className="text-xl font-bold text-emerald-500">100%</span>
+                        <span className="text-lg font-bold text-emerald-500">100%</span>
                     </div>
                     <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
                         <div className="h-full w-full bg-emerald-500"></div>
