@@ -13,8 +13,9 @@ services:
   - type: web
     name: server-guard-frontend
     runtime: static
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
         fromService:
@@ -43,8 +44,9 @@ services:
     name: server-guard-api-gateway
     runtime: python
     plan: free
-    buildCommand: cd backend/api-gateway && pip install -r requirements.txt
-    startCommand: cd backend/api-gateway && uvicorn main:socket_app --host 0.0.0.0 --port $PORT
+    rootDir: backend/api-gateway
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:socket_app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
@@ -67,8 +69,9 @@ services:
     name: server-guard-detection-engine
     runtime: python
     plan: free
-    buildCommand: cd backend/detection-engine && pip install -r requirements.txt
-    startCommand: cd backend/detection-engine && uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend/detection-engine
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
@@ -86,8 +89,9 @@ services:
     name: server-guard-ingest-service
     runtime: python
     plan: free
-    buildCommand: cd backend/ingest-service && pip install -r requirements.txt
-    startCommand: cd backend/ingest-service && uvicorn main:socket_app --host 0.0.0.0 --port $PORT
+    rootDir: backend/ingest-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:socket_app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
@@ -104,8 +108,9 @@ services:
     name: server-guard-alert-manager
     runtime: python
     plan: free
-    buildCommand: cd backend/alert-manager && pip install -r requirements.txt
-    startCommand: cd backend/alert-manager && uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend/alert-manager
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
@@ -122,8 +127,9 @@ services:
     name: server-guard-response-engine
     runtime: python
     plan: free
-    buildCommand: cd backend/response-engine && pip install -r requirements.txt
-    startCommand: cd backend/response-engine && uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend/response-engine
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
@@ -139,8 +145,9 @@ services:
     name: server-guard-model-service
     runtime: python
     plan: free
-    buildCommand: cd model_microservice && pip install -r requirements.txt
-    startCommand: cd model_microservice && gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    rootDir: model_microservice
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
