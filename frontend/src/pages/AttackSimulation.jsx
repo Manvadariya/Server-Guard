@@ -573,6 +573,7 @@ const AttackSimulation = () => {
                 if (data.ip_manager?.cleared_count !== undefined) {
                     addLog(`[HARD STOP] Cleared ${data.ip_manager.cleared_count} IP blocks`, 'info');
                 }
+                addLog('[HARD STOP] \u2705 All attacks stopped and system reset', 'success');
             } else {
                 addLog('[HARD STOP] Backend returned error - frontend cleared only', 'warning');
             }
@@ -580,10 +581,8 @@ const AttackSimulation = () => {
             addLog('[HARD STOP] Backend unreachable - frontend cleared only', 'warning');
         }
         
-        // Reset logs to initial state
-        setLogs(INITIAL_LOGS);
+        // Reset status to ready
         setStatus('READY');
-        addLog('[HARD STOP] \u2705 All attacks stopped and system reset', 'success');
     };
 
     return (
@@ -683,7 +682,7 @@ const AttackSimulation = () => {
                         <button
                             onClick={hardStopAllAttacks}
                             disabled={status === 'STOPPING'}
-                            className={`w-full py-4 rounded-2xl uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 font-bold border
+                            className={`w-full py-4 rounded-2xl uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 font-bold border group
                                 ${status === 'STOPPING' 
                                     ? 'bg-zinc-800 text-zinc-500 border-zinc-700 cursor-not-allowed'
                                     : 'bg-zinc-900/60 hover:bg-red-950/40 text-zinc-300 hover:text-white border-white/10 hover:border-red-500/50 hover:shadow-[0_0_30px_rgba(220,38,38,0.2)]'

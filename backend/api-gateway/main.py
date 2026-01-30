@@ -794,12 +794,16 @@ async def proxy_hard_stop():
         "success": False
     }
     
+    model_success = False
+    ip_success = False
+    
     # 1. Clear model service logs
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(f"{MODEL_SERVICE_URL}/api/hard-stop") as resp:
                 if resp.status == 200:
                     results["model_service"] = await resp.json()
+                    model_success = True
                 else:
                     results["model_service"] = {"error": f"Status {resp.status}"}
     except aiohttp.ClientError as e:
@@ -809,6 +813,7 @@ async def proxy_hard_stop():
     try:
         ip_result = ip_manager.clear_all()
         results["ip_manager"] = ip_result
+        ip_success = True
         
         # Broadcast to frontend
         await sio.emit('ip:cleared', {
@@ -822,8 +827,13 @@ async def proxy_hard_stop():
     except Exception as e:
         results["ip_manager"] = {"error": str(e)}
     
-    results["success"] = True
-    print("[*] Hard stop executed - All attacks and logs cleared")
+    # Set success only if at least one operation succeeded
+    results["success"] = model_success or ip_success
+    
+    if results["success"]:
+        print("[*] Hard stop executed - All attacks and logs cleared")
+    else:
+        print("[!] Hard stop failed - Both model service and IP manager operations failed")
     
     return results
 
