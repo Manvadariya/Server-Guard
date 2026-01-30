@@ -16,7 +16,8 @@ import {
     Zap,
     Home,
     LayoutDashboard,
-    ChevronRight
+    ChevronRight,
+    StopCircle
 } from 'lucide-react';
 import { API_CONFIG } from '../config/api';
 
@@ -543,6 +544,48 @@ const AttackSimulation = () => {
         addLog('[STATUS] All connections closed \u2014 System returning to idle state', 'info');
     };
 
+    const hardStopAllAttacks = async () => {
+        // Stop any frontend simulation
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+        setStatus('STOPPING');
+        setActiveModuleId(null);
+        addLog('[HARD STOP] Initiating hard stop of all attacks...', 'warning');
+        
+        // Call backend hard-stop endpoint
+        const baseUrl = config.target ? config.target.replace(/\/$/, '') : '';
+        const hardStopUrl = `${baseUrl}/api/hard-stop`;
+        
+        try {
+            const res = await fetch(hardStopUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                addLog(`[HARD STOP] \u2705 Backend cleared successfully`, 'success');
+                if (data.model_service?.cleared_logs) {
+                    addLog(`[HARD STOP] Cleared ${data.model_service.cleared_logs} attack logs from model service`, 'info');
+                }
+                if (data.ip_manager?.cleared_count !== undefined) {
+                    addLog(`[HARD STOP] Cleared ${data.ip_manager.cleared_count} IP blocks`, 'info');
+                }
+            } else {
+                addLog('[HARD STOP] Backend returned error - frontend cleared only', 'warning');
+            }
+        } catch (e) {
+            addLog('[HARD STOP] Backend unreachable - frontend cleared only', 'warning');
+        }
+        
+        // Reset logs to initial state
+        setLogs(INITIAL_LOGS);
+        setStatus('READY');
+        addLog('[HARD STOP] \u2705 All attacks stopped and system reset', 'success');
+    };
+
     return (
         <div className="min-h-screen bg-[#050505] text-white font-inter selection:bg-[#ccf655] selection:text-black overflow-x-hidden relative">
             <style>{`
@@ -633,6 +676,26 @@ const AttackSimulation = () => {
                                 Stop Active Server Attack
                             </button>
                         )}
+                    </div>
+
+                    {/* Hard Stop Button - Always visible */}
+                    <div className="mb-8">
+                        <button
+                            onClick={hardStopAllAttacks}
+                            disabled={status === 'STOPPING'}
+                            className={`w-full py-4 rounded-2xl uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 font-bold border
+                                ${status === 'STOPPING' 
+                                    ? 'bg-zinc-800 text-zinc-500 border-zinc-700 cursor-not-allowed'
+                                    : 'bg-zinc-900/60 hover:bg-red-950/40 text-zinc-300 hover:text-white border-white/10 hover:border-red-500/50 hover:shadow-[0_0_30px_rgba(220,38,38,0.2)]'
+                                }
+                            `}
+                        >
+                            <StopCircle size={20} className={status === 'STOPPING' ? '' : 'group-hover:scale-110 transition-transform'} />
+                            {status === 'STOPPING' ? 'Stopping All Attacks...' : 'Hard Stop All Attacks'}
+                        </button>
+                        <p className="text-center text-[10px] text-zinc-600 mt-2 font-mono">
+                            Clears all backend attack logs, IP blocks, and resets the system
+                        </p>
                     </div>
                 </div>
 

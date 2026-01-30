@@ -212,6 +212,25 @@ def get_dashboard():
         "timestamp": datetime.now().isoformat()
     })
 
+@app.route('/api/hard-stop', methods=['POST'])
+def hard_stop():
+    """
+    Hard stop endpoint to clear all attack logs and reset the system.
+    This frees the backend from any lingering attack state.
+    """
+    global SYSTEM_LOGS
+    cleared_count = len(SYSTEM_LOGS)
+    SYSTEM_LOGS = []
+    
+    print("[*] Hard stop executed - All logs cleared")
+    
+    return jsonify({
+        "status": "success",
+        "message": "Hard stop executed - All attacks cleared",
+        "cleared_logs": cleared_count,
+        "timestamp": datetime.now().isoformat()
+    })
+
 @app.route('/api/analyze', methods=['POST'])
 def analyze_packet():
     """

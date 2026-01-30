@@ -19,9 +19,23 @@ const Dashboard = () => {
     const [lastPollError, setLastPollError] = useState(null);
     // Poll model microservice dashboard for real detections
     useEffect(() => {
+        let abortController = null;
+        
         const poll = async () => {
+            // Create a new AbortController for each request
+            abortController = new AbortController();
+            const timeoutId = setTimeout(() => abortController.abort(), 5000); // 5 second timeout
+            
             try {
-                const res = await fetch(`${API_URL}/api/dashboard`);
+                const res = await fetch(`${API_URL}/api/dashboard`, {
+                    signal: abortController.signal
+                });
+                clearTimeout(timeoutId);
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                
                 const data = await res.json();
                 setLastPollError(null);
 
@@ -113,14 +127,23 @@ const Dashboard = () => {
                 setSelectedNode('model-microservice');
 
             } catch (e) {
-                console.error('Dashboard poll failed', e);
-                setLastPollError('Model service unreachable');
+                clearTimeout(timeoutId);
+                // Only log error if not aborted due to cleanup
+                if (e.name !== 'AbortError') {
+                    console.error('Dashboard poll failed', e);
+                    setLastPollError('Model service unreachable');
+                }
             }
         };
 
         poll();
         const interval = setInterval(poll, 2000);
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            if (abortController) {
+                abortController.abort();
+            }
+        };
     }, []);
 
     const alertCounts = {
