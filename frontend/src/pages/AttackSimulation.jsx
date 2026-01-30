@@ -18,6 +18,7 @@ import {
     LayoutDashboard,
     ChevronRight
 } from 'lucide-react';
+import { API_CONFIG } from '../config/api';
 
 // --- Simulation Data & Helpers ---
 
@@ -324,9 +325,8 @@ const LogConsole = ({ logs }) => {
 
 // --- Main App ---
 
-// Use relative URL in production (nginx proxies /api to backend)
-const isDev = import.meta.env.DEV;
-const DEFAULT_TARGET = isDev ? 'http://127.0.0.1:8006' : '';
+// Use centralized API configuration
+const DEFAULT_TARGET = API_CONFIG.API_GATEWAY;
 
 const AttackSimulation = () => {
     const [status, setStatus] = useState('READY');

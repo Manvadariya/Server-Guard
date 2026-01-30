@@ -146,4 +146,48 @@ Open your browser and navigate to:
 
 ---
 
+## ☁️ Render Deployment (Free Tier)
 
+Server Guard can be deployed on [Render](https://render.com) using the free tier. The `render.yaml` blueprint file configures all services for one-click deployment.
+
+### Prerequisites
+- A Render account (free tier works)
+- This repository connected to your Render account
+
+### Deploy to Render
+
+1. **Fork or clone this repository** to your GitHub account
+
+2. **Connect to Render**
+   - Go to [Render Dashboard](https://dashboard.render.com)
+   - Click "New" → "Blueprint"
+   - Select your repository
+   - Render will automatically detect `render.yaml`
+
+3. **Deploy**
+   - Click "Apply" to create all services
+   - Wait for all services to build and deploy (this may take 10-15 minutes on first deploy)
+
+### Service URLs After Deployment
+
+| Service | URL Pattern |
+| :--- | :--- |
+| Frontend Dashboard | `https://server-guard-frontend.onrender.com` |
+| API Gateway | `https://server-guard-api-gateway.onrender.com` |
+| Model Service | `https://server-guard-model-service.onrender.com` |
+| Other Services | `https://server-guard-{service-name}.onrender.com` |
+
+### Free Tier Limitations
+
+- **Cold Starts**: Free tier services spin down after 15 minutes of inactivity. First request after idle may take 30-60 seconds.
+- **Memory**: Limited to 512MB RAM per service. The ML model service uses CPU-only PyTorch to reduce memory usage.
+- **Ephemeral Storage**: Data stored in the file system is not persistent. Events are stored in memory/temp files.
+- **Concurrent Connections**: Limited concurrent connections on free tier.
+
+### Keeping Services Warm (Optional)
+
+To prevent cold starts, you can use a service like [UptimeRobot](https://uptimerobot.com/) to ping your services every 5-10 minutes:
+- Ping `https://server-guard-api-gateway.onrender.com/health`
+- Ping `https://server-guard-model-service.onrender.com/health`
+
+---

@@ -1,9 +1,14 @@
 # Render Blueprint - Server Guard Deployment
 # https://render.com/docs/blueprint-spec
+#
+# RENDER FREE TIER DEPLOYMENT
+# ============================
+# This configuration is optimized for Render's free tier.
+# Note: Free tier services spin down after inactivity and have cold starts.
 
 services:
   # ============================================
-  # FRONTEND - React Static Site
+  # FRONTEND - React Static Site (Free)
   # ============================================
   - type: web
     name: server-guard-frontend
@@ -19,130 +24,130 @@ services:
     routes:
       - type: rewrite
         source: /api/*
-        destination: https://server-guard-api-gateway.onrender.com/api/*
+        destination: https://server-guard-api-gateway.onrender.com/*
+      - type: rewrite
+        source: /socket.io/*
+        destination: https://server-guard-api-gateway.onrender.com/socket.io/*
     headers:
       - path: /*
         name: X-Frame-Options
         value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
 
   # ============================================
-  # API GATEWAY - Main Backend Entry Point
+  # API GATEWAY - Main Backend Entry Point (Free)
   # ============================================
   - type: web
     name: server-guard-api-gateway
     runtime: python
+    plan: free
     buildCommand: cd backend/api-gateway && pip install -r requirements.txt
-    startCommand: cd backend/api-gateway && uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: cd backend/api-gateway && uvicorn main:socket_app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
-      - key: DETECTION_ENGINE_URL
-        fromService:
-          type: web
-          name: server-guard-detection-engine
-          property: hostport
       - key: INGEST_SERVICE_URL
-        fromService:
-          type: web
-          name: server-guard-ingest-service
-          property: hostport
+        value: https://server-guard-ingest-service.onrender.com
+      - key: DETECTION_ENGINE_URL
+        value: https://server-guard-detection-engine.onrender.com
       - key: ALERT_MANAGER_URL
-        fromService:
-          type: web
-          name: server-guard-alert-manager
-          property: hostport
+        value: https://server-guard-alert-manager.onrender.com
       - key: RESPONSE_ENGINE_URL
-        fromService:
-          type: web
-          name: server-guard-response-engine
-          property: hostport
+        value: https://server-guard-response-engine.onrender.com
       - key: MODEL_SERVICE_URL
-        fromService:
-          type: web
-          name: server-guard-model-service
-          property: hostport
+        value: https://server-guard-model-service.onrender.com
     healthCheckPath: /health
 
   # ============================================
-  # DETECTION ENGINE
+  # DETECTION ENGINE (Free)
   # ============================================
   - type: web
     name: server-guard-detection-engine
     runtime: python
+    plan: free
     buildCommand: cd backend/detection-engine && pip install -r requirements.txt
     startCommand: cd backend/detection-engine && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
+      - key: ALERT_MANAGER_URL
+        value: https://server-guard-alert-manager.onrender.com
+      - key: MODEL_SERVICE_URL
+        value: https://server-guard-model-service.onrender.com
     healthCheckPath: /health
 
   # ============================================
-  # INGEST SERVICE
+  # INGEST SERVICE (Free)
+  # Note: Uses in-memory/ephemeral storage on free tier
   # ============================================
   - type: web
     name: server-guard-ingest-service
     runtime: python
+    plan: free
     buildCommand: cd backend/ingest-service && pip install -r requirements.txt
-    startCommand: cd backend/ingest-service && uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: cd backend/ingest-service && uvicorn main:socket_app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
-    disk:
-      name: ingest-data
-      mountPath: /app/data
-      sizeGB: 1
+      - key: DETECTION_ENGINE_URL
+        value: https://server-guard-detection-engine.onrender.com
+      - key: API_GATEWAY_URL
+        value: https://server-guard-api-gateway.onrender.com
     healthCheckPath: /health
 
   # ============================================
-  # ALERT MANAGER
+  # ALERT MANAGER (Free)
   # ============================================
   - type: web
     name: server-guard-alert-manager
     runtime: python
+    plan: free
     buildCommand: cd backend/alert-manager && pip install -r requirements.txt
     startCommand: cd backend/alert-manager && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
+      - key: API_GATEWAY_URL
+        value: https://server-guard-api-gateway.onrender.com
+      - key: RESPONSE_ENGINE_URL
+        value: https://server-guard-response-engine.onrender.com
     healthCheckPath: /health
 
   # ============================================
-  # RESPONSE ENGINE (SOAR)
+  # RESPONSE ENGINE / SOAR (Free)
   # ============================================
   - type: web
     name: server-guard-response-engine
     runtime: python
+    plan: free
     buildCommand: cd backend/response-engine && pip install -r requirements.txt
     startCommand: cd backend/response-engine && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
+      - key: API_GATEWAY_URL
+        value: https://server-guard-api-gateway.onrender.com
     healthCheckPath: /health
 
   # ============================================
-  # ML MODEL SERVICE (Flask)
+  # ML MODEL SERVICE (Free)
+  # Note: PyTorch models may require optimization for free tier memory limits
   # ============================================
   - type: web
     name: server-guard-model-service
     runtime: python
+    plan: free
     buildCommand: cd model_microservice && pip install -r requirements.txt
-    startCommand: cd model_microservice && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    startCommand: cd model_microservice && gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
       - key: ALERT_MANAGER_URL
-        fromService:
-          type: web
-          name: server-guard-alert-manager
-          property: hostport
+        value: https://server-guard-alert-manager.onrender.com
       - key: API_GATEWAY_URL
-        fromService:
-          type: web
-          name: server-guard-api-gateway
-          property: hostport
+        value: https://server-guard-api-gateway.onrender.com
       - key: RESPONSE_ENGINE_URL
-        fromService:
-          type: web
-          name: server-guard-response-engine
-          property: hostport
+        value: https://server-guard-response-engine.onrender.com
     healthCheckPath: /health
