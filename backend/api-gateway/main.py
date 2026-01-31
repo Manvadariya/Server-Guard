@@ -753,6 +753,33 @@ async def proxy_defense_actions(limit: int = 50):
         raise HTTPException(status_code=503, detail="Response Engine Unavailable")
 
 
+# ============ SOAR Proxy Routes ============
+@app.get("/api/soar/status", tags=["SOAR Proxy"])
+async def proxy_soar_status():
+    """Proxy to Response Engine SOAR status"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{RESPONSE_ENGINE_URL}/soar/status") as resp:
+                if resp.status == 200:
+                    return await resp.json()
+                raise HTTPException(status_code=resp.status, detail="Response Engine Error")
+    except aiohttp.ClientError:
+        raise HTTPException(status_code=503, detail="Response Engine Unavailable")
+
+
+@app.post("/api/soar/unblock-all", tags=["SOAR Proxy"])
+async def proxy_soar_unblock_all():
+    """Proxy to Response Engine SOAR unblock-all"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{RESPONSE_ENGINE_URL}/soar/unblock-all") as resp:
+                if resp.status == 200:
+                    return await resp.json()
+                raise HTTPException(status_code=resp.status, detail="Response Engine Error")
+    except aiohttp.ClientError:
+        raise HTTPException(status_code=503, detail="Response Engine Unavailable")
+
+
 # ============ Model Service Proxy Routes ============
 @app.post("/api/analyze", tags=["Model Service Proxy"])
 async def proxy_analyze(request: Request):

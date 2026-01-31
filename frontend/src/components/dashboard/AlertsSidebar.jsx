@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, AlertTriangle, CheckCircle2, XCircle, WifiOff, Shield, Ban, Clock, Server, RotateCcw } from 'lucide-react';
+import { API_CONFIG } from '../../config/api';
 
-const RESPONSE_ENGINE_URL = 'http://127.0.0.1:8004';
+// Use API config for production/development flexibility
+const RESPONSE_ENGINE_URL = API_CONFIG.RESPONSE_ENGINE;
 
 const AlertsSidebar = ({ alerts, alertCounts, lastPollError }) => {
     const [activeFilter, setActiveFilter] = useState('All');
@@ -29,7 +31,7 @@ const AlertsSidebar = ({ alerts, alertCounts, lastPollError }) => {
     useEffect(() => {
         const fetchSoarStatus = async () => {
             try {
-                const res = await fetch(`${RESPONSE_ENGINE_URL}/soar/status`);
+                const res = await fetch(`${RESPONSE_ENGINE_URL}/api/soar/status`);
                 if (res.ok) {
                     const data = await res.json();
                     setSoarStatus(data);
@@ -49,7 +51,7 @@ const AlertsSidebar = ({ alerts, alertCounts, lastPollError }) => {
         if (!confirm('This will remove ALL active defenses. Continue?')) return;
         
         try {
-            const res = await fetch(`${RESPONSE_ENGINE_URL}/soar/unblock-all`, {
+            const res = await fetch(`${RESPONSE_ENGINE_URL}/api/soar/unblock-all`, {
                 method: 'POST'
             });
             

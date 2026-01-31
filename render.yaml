@@ -31,6 +31,5 @@ services:
         value: "3.11"
       - key: DEMO_MODE
         value: "true"
-      - key: PORT
-        value: "10000"
+      # Note: PORT is automatically assigned by Render
     healthCheckPath: /health
