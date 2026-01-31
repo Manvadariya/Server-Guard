@@ -327,14 +327,26 @@ const LogConsole = ({ logs }) => {
 // --- Main App ---
 
 // Use centralized API configuration
-const DEFAULT_TARGET = API_CONFIG.API_GATEWAY;
+// In production (same-origin), use window.location.origin as default target
+// In development, use the configured API_GATEWAY URL
+const getDefaultTarget = () => {
+    // If API_GATEWAY is configured (development mode), use it
+    if (API_CONFIG.API_GATEWAY) {
+        return API_CONFIG.API_GATEWAY;
+    }
+    // In production (same-origin), use current window origin
+    if (typeof window !== 'undefined') {
+        return window.location.origin;
+    }
+    return '';
+};
 
 const AttackSimulation = () => {
     const [status, setStatus] = useState('READY');
     const [activeModuleId, setActiveModuleId] = useState(null);
     const [logs, setLogs] = useState(INITIAL_LOGS);
     const [config, setConfig] = useState({
-        target: DEFAULT_TARGET, // Empty in production (uses relative /api)
+        target: getDefaultTarget(), // Uses current origin in production
         requests: 10000,
         threads: 64
     });
