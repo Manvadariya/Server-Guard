@@ -148,7 +148,21 @@ Open your browser and navigate to:
 
 ## ☁️ Render Deployment (Free Tier)
 
-Server Guard can be deployed on [Render](https://render.com) using the free tier. The `render.yaml` blueprint file configures all services for one-click deployment.
+Server Guard can be deployed on [Render](https://render.com) using the free tier. The `render.yaml` blueprint file configures a **unified standalone deployment** with all services (frontend + backend) in a single container.
+
+### Architecture: Unified Standalone Deployment
+
+The unified deployment combines:
+- **Frontend**: React dashboard served via Nginx
+- **Backend Services**: All microservices running in a single container
+  - API Gateway (main entry point, Socket.IO)
+  - Ingest Service (telemetry ingestion)
+  - Detection Engine (ML-powered threat detection)
+  - Alert Manager (alert aggregation)
+  - Response Engine (automated response/SOAR)
+  - Model Service (AI inference)
+
+All services communicate via localhost within the container, with Nginx handling external traffic.
 
 ### Prerequisites
 - A Render account (free tier works)
@@ -165,17 +179,20 @@ Server Guard can be deployed on [Render](https://render.com) using the free tier
    - Render will automatically detect `render.yaml`
 
 3. **Deploy**
-   - Click "Apply" to create all services
-   - Wait for all services to build and deploy (this may take 10-15 minutes on first deploy)
+   - Click "Apply" to create the unified service
+   - Wait for the build and deployment (first deploy may take 10-15 minutes)
 
-### Service URLs After Deployment
+### Service URL After Deployment
 
 | Service | URL Pattern |
 | :--- | :--- |
-| Frontend Dashboard | `https://server-guard-frontend.onrender.com` |
-| API Gateway | `https://server-guard-api-gateway.onrender.com` |
-| Model Service | `https://server-guard-model-service.onrender.com` |
-| Other Services | `https://server-guard-{service-name}.onrender.com` |
+| Server Guard (Unified) | `https://server-guard.onrender.com` |
+
+All endpoints are available from the single URL:
+- Dashboard: `https://server-guard.onrender.com/`
+- API: `https://server-guard.onrender.com/api/`
+- Socket.IO: `https://server-guard.onrender.com/socket.io/`
+- Health: `https://server-guard.onrender.com/health`
 
 ### Free Tier Limitations
 
@@ -186,8 +203,7 @@ Server Guard can be deployed on [Render](https://render.com) using the free tier
 
 ### Keeping Services Warm (Optional)
 
-To prevent cold starts, you can use a service like [UptimeRobot](https://uptimerobot.com/) to ping your services every 5-10 minutes:
-- Ping `https://server-guard-api-gateway.onrender.com/health`
-- Ping `https://server-guard-model-service.onrender.com/health`
+To prevent cold starts, you can use a service like [UptimeRobot](https://uptimerobot.com/) to ping your service every 5-10 minutes:
+- Ping `https://server-guard.onrender.com/health`
 
 ---
