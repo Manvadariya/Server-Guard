@@ -327,11 +327,12 @@ const LogConsole = ({ logs }) => {
 // --- Main App ---
 
 // Use centralized API configuration
-// In production (same-origin), use window.location.origin as default target
+// In production (same-origin), API_GATEWAY is empty string - use window.location.origin
 // In development, use the configured API_GATEWAY URL
 const getDefaultTarget = () => {
-    // If API_GATEWAY is configured (development mode), use it
-    if (API_CONFIG.API_GATEWAY) {
+    // If API_GATEWAY is configured with a non-empty value (development mode), use it
+    // Empty string is intentionally treated as production mode (same-origin deployment)
+    if (API_CONFIG.API_GATEWAY && API_CONFIG.API_GATEWAY !== '') {
         return API_CONFIG.API_GATEWAY;
     }
     // In production (same-origin), use current window origin
