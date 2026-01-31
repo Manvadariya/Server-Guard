@@ -1,14 +1,40 @@
 # Server Guard - Unified Dockerfile
-# Single container deployment running all services using localhost communication
+# Single container deployment with frontend and all backend services
 
+# ============================================
+# Stage 1: Build the React Frontend
+# ============================================
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /frontend
+
+# Copy package files
+COPY frontend/package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY frontend/ .
+
+# Build with empty VITE_API_URL (uses relative URLs for same-origin deployment)
+ENV VITE_API_URL=""
+RUN npm run build
+
+# ============================================
+# Stage 2: Build the Unified Application
+# ============================================
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including nginx and gettext for envsubst
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     curl \
+    nginx \
+    supervisor \
+    gettext-base \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -17,16 +43,30 @@ COPY requirements-unified.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements-unified.txt
 
+# Copy frontend build from stage 1
+COPY --from=frontend-builder /frontend/dist /var/www/html
+
+# Copy nginx configuration template for unified deployment
+COPY nginx/unified.conf /etc/nginx/nginx.conf.template
+
 # Copy all application code
 COPY backend/ ./backend/
 COPY model_microservice/ ./model_microservice/
 COPY unified_app.py .
 
-# Ensure all service directories are accessible
-RUN chmod +x unified_app.py
+# Copy supervisor configuration
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Default port (API Gateway) - Render will set this via $PORT
-ENV PORT=3001
+# Copy startup script
+COPY start-unified.sh /start-unified.sh
+RUN chmod +x /start-unified.sh unified_app.py
+
+# Create required directories
+RUN mkdir -p /var/log/nginx /var/log/supervisor && \
+    touch /var/log/nginx/access.log /var/log/nginx/error.log
+
+# Default port for nginx (Render will set this via $PORT)
+ENV PORT=10000
 
 # Environment variables for localhost inter-service communication
 ENV INGEST_SERVICE_URL=http://127.0.0.1:8001
@@ -38,9 +78,9 @@ ENV API_GATEWAY_URL=http://127.0.0.1:3001
 ENV DEMO_MODE=true
 ENV PYTHON_VERSION=3.11
 
-# Health check - allow 120 seconds for all services to initialize
+# Health check - check nginx which is the main entry point
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
-# Run the unified application
-CMD ["python", "unified_app.py"]
+# Run the startup script
+CMD ["/start-unified.sh"]

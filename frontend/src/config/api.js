@@ -1,23 +1,24 @@
 // API Configuration for Server Guard Frontend
-// Supports both local development and Render deployment
+// Supports both local development, Render deployment, and unified standalone deployment
 
 const isDevelopment = import.meta.env.DEV;
 
 // Get API URL from environment variable (set by Render) or use defaults
-// VITE_API_URL will be set to the API gateway host (e.g., server-guard-api-gateway.onrender.com)
+// VITE_API_URL will be empty for unified deployment (same-origin)
+// or set to the API gateway host for separate deployments
 const RENDER_API_HOST = import.meta.env.VITE_API_URL;
 
-// Build the full API Gateway URL for Render deployment
+// Build the full API Gateway URL
 const getApiGatewayUrl = () => {
-    if (RENDER_API_HOST) {
-        // Render provides just the hostname, we need to add https://
-        const host = RENDER_API_HOST.startsWith('http') 
-            ? RENDER_API_HOST 
-            : `https://${RENDER_API_HOST}`;
-        return host;
+    // If VITE_API_URL is empty or not set, use relative URLs (same-origin)
+    if (!RENDER_API_HOST || RENDER_API_HOST === '') {
+        return '';
     }
-    // Fallback: use relative URL for static site proxy
-    return '';
+    // Render provides just the hostname, we need to add https://
+    const host = RENDER_API_HOST.startsWith('http') 
+        ? RENDER_API_HOST 
+        : `https://${RENDER_API_HOST}`;
+    return host;
 };
 
 // Development URLs (direct backend access)
@@ -32,7 +33,7 @@ const DEV_CONFIG = {
     SOCKET_URL: 'http://127.0.0.1:3001',
 };
 
-// Production URLs - all traffic goes through API Gateway on Render
+// Production URLs - all traffic goes through the same origin or API Gateway
 const API_GATEWAY = getApiGatewayUrl();
 const PROD_CONFIG = {
     API_GATEWAY: API_GATEWAY,
@@ -41,7 +42,7 @@ const PROD_CONFIG = {
     INGEST_SERVICE: API_GATEWAY,
     ALERT_MANAGER: API_GATEWAY,
     RESPONSE_ENGINE: API_GATEWAY,
-    // Socket.IO URL - same as API Gateway for Render
+    // Socket.IO URL - same as API Gateway (empty for same-origin)
     SOCKET_URL: API_GATEWAY,
 };
 
@@ -55,7 +56,9 @@ export const buildApiUrl = (service, path = '') => {
 
 // Get Socket.IO connection URL
 export const getSocketUrl = () => {
-    return API_CONFIG.SOCKET_URL || API_CONFIG.API_GATEWAY;
+    // For same-origin deployment, return undefined to use default connection
+    const url = API_CONFIG.SOCKET_URL || API_CONFIG.API_GATEWAY;
+    return url || undefined;
 };
 
 export default API_CONFIG;

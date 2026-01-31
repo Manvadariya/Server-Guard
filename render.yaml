@@ -1,56 +1,27 @@
 # Render Blueprint - Server Guard Deployment
 # https://render.com/docs/blueprint-spec
 #
-# UNIFIED SINGLE-CONTAINER DEPLOYMENT
-# ====================================
-# This configuration runs all backend services in a single container.
-# Services communicate via localhost, solving connectivity issues on free tier.
-# The container runs: API Gateway, Ingest, Detection, Alert, Response, and Model services.
+# UNIFIED STANDALONE DEPLOYMENT
+# =============================
+# This configuration runs the complete Server Guard application in a single container.
+# Includes: React Frontend + All Backend Microservices
+# - API Gateway (main entry point, handles external requests)
+# - Ingest Service (telemetry ingestion)
+# - Detection Engine (rule-based + ML anomaly detection)
+# - Alert Manager (alert generation and routing)
+# - Response Engine (automated incident response / SOAR)
+# - Model Service (ML models for threat detection)
+# - Frontend (React dashboard served via nginx)
+#
+# All services communicate via localhost within the container.
+# Nginx serves the frontend and proxies API/WebSocket requests to the backend.
 
 services:
   # ============================================
-  # FRONTEND - React Static Site (Free)
+  # UNIFIED SERVER GUARD - Complete Application
   # ============================================
   - type: web
-    name: server-guard-frontend
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    envVars:
-      - key: VITE_API_URL
-        value: https://server-guard-backend.onrender.com
-    routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://server-guard-backend.onrender.com/api/*
-      - type: rewrite
-        source: /socket.io/*
-        destination: https://server-guard-backend.onrender.com/socket.io/*
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-
-  # ============================================
-  # UNIFIED BACKEND - All Services in One Container
-  # ============================================
-  # This single container runs all backend microservices:
-  # - API Gateway (main entry point, handles external requests)
-  # - Ingest Service (telemetry ingestion)
-  # - Detection Engine (rule-based + ML anomaly detection)
-  # - Alert Manager (alert generation and routing)
-  # - Response Engine (automated incident response / SOAR)
-  # - Model Service (ML models for threat detection)
-  #
-  # All services communicate via localhost, eliminating
-  # inter-service connectivity issues on Render free tier.
-  # ============================================
-  - type: web
-    name: server-guard-backend
+    name: server-guard
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile.unified
@@ -60,6 +31,5 @@ services:
         value: "3.11"
       - key: DEMO_MODE
         value: "true"
-      # Internal localhost URLs are configured in Dockerfile.unified
-      # No need to override them here - services communicate via localhost
+      # Note: PORT is automatically assigned by Render
     healthCheckPath: /health
