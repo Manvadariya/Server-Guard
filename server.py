@@ -332,6 +332,18 @@ async def health_check():
     }
 
 # ==============================================================================
+# DASHBOARD ENDPOINT
+# ==============================================================================
+@app.get("/api/dashboard", tags=["Dashboard"])
+async def get_dashboard():
+    """Returns recent logs for the UI"""
+    return {
+        "logs": SYSTEM_LOGS[-50:],
+        "total_logs": len(SYSTEM_LOGS),
+        "timestamp": datetime.now().isoformat()
+    }
+
+# ==============================================================================
 # ML ANALYZE ENDPOINT (Model Microservice)
 # ==============================================================================
 @app.post("/api/analyze", tags=["ML Analysis"])
